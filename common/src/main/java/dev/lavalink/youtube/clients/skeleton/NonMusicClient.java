@@ -12,14 +12,14 @@ import dev.lavalink.youtube.cipher.CipherManager;
 import dev.lavalink.youtube.cipher.CipherManager.CachedPlayerScript;
 import dev.lavalink.youtube.clients.ClientConfig;
 import dev.lavalink.youtube.track.TemporalInfo;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.HttpResponse;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -63,19 +63,19 @@ public abstract class NonMusicClient implements Client {
                                            @NotNull HttpPost request,
                                            @NotNull String context) throws IOException {
         if (request.getEntity() instanceof StringEntity) {
-            log.debug("Requesting {} ({}) with payload {}", request.getURI(), context, EntityUtils.toString(request.getEntity(), StandardCharsets.UTF_8));
+            log.debug("Requesting {} ({}) with payload {}", request.getRequestUri(), context, dev.lavalink.youtube.http.HttpUtils.entityToString(request.getEntity(), StandardCharsets.UTF_8));
         } else {
-            log.debug("Requesting {} ({})", context, request.getURI());
+            log.debug("Requesting {} ({})", context, request.getRequestUri());
         }
 
-        try (CloseableHttpResponse response = httpInterface.execute(request)) {
+        try (ClassicHttpResponse response = httpInterface.execute(request)) {
             HttpClientTools.assertSuccessWithContent(response, context);
             // todo: flag for checking json content type?
             //       from my testing, json is always returned so might not be necessary.
             HttpClientTools.assertJsonContentType(response);
 
-            String json = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-            log.trace("Response from {} ({}) {}", request.getURI(), context, json);
+            String json = dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8);
+            log.trace("Response from {} ({}) {}", request.getRequestUri(), context, json);
 
             return JsonBrowser.parse(json);
         }
@@ -150,7 +150,7 @@ public abstract class NonMusicClient implements Client {
         }
 
         HttpPost request = new HttpPost(PLAYER_URL);
-        request.setEntity(new StringEntity(payload, "UTF-8"));
+        request.setEntity(new StringEntity(payload, StandardCharsets.UTF_8));
 
         JsonBrowser json = loadJsonResponse(httpInterface, request, "player api response");
         JsonBrowser playabilityJson = json.get("playabilityStatus");
@@ -208,8 +208,8 @@ public abstract class NonMusicClient implements Client {
             HttpGet request = new HttpGet(embedUrl);
             request.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
-            HttpResponse response = httpClient.execute(request);
-            String html = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+            ClassicHttpResponse response = httpClient.execute(request);
+            String html = dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8);
 
             Pattern pattern = Pattern.compile("\"encryptedHostFlags\":\"([^\"]+)\"");
             Matcher matcher = pattern.matcher(html);
@@ -234,7 +234,7 @@ public abstract class NonMusicClient implements Client {
             .toJsonString();
 
         HttpPost request = new HttpPost(SEARCH_URL); // This *had* a key parameter. Doesn't seem needed though.
-        request.setEntity(new StringEntity(payload, "UTF-8"));
+        request.setEntity(new StringEntity(payload, StandardCharsets.UTF_8));
 
         try {
             return loadJsonResponse(httpInterface, request, "search response");
@@ -267,7 +267,7 @@ public abstract class NonMusicClient implements Client {
             .setAttributes(httpInterface);
 
         HttpPost request = new HttpPost(NEXT_URL);
-        request.setEntity(new StringEntity(clientConfig.toJsonString(), "UTF-8"));
+        request.setEntity(new StringEntity(clientConfig.toJsonString(), StandardCharsets.UTF_8));
 
         try {
             return loadJsonResponse(httpInterface, request, "mix response");
@@ -292,7 +292,7 @@ public abstract class NonMusicClient implements Client {
             .setAttributes(httpInterface);
 
         HttpPost request = new HttpPost(BROWSE_URL);
-        request.setEntity(new StringEntity(clientConfig.toJsonString(), "UTF-8"));
+        request.setEntity(new StringEntity(clientConfig.toJsonString(), StandardCharsets.UTF_8));
 
         try {
             return loadJsonResponse(httpInterface, request, "playlist response");
@@ -529,7 +529,7 @@ public abstract class NonMusicClient implements Client {
                 .setAttributes(httpInterface);
 
             HttpPost request = new HttpPost(BROWSE_URL);
-            request.setEntity(new StringEntity(clientConfig.toJsonString(), "UTF-8"));
+            request.setEntity(new StringEntity(clientConfig.toJsonString(), StandardCharsets.UTF_8));
 
             try {
                 JsonBrowser continuationJson = loadJsonResponse(httpInterface, request, "playlist response");

@@ -9,13 +9,13 @@ import com.sedmelluq.discord.lavaplayer.tools.io.HttpInterface;
 import dev.lavalink.youtube.ExceptionWithResponseBody;
 import dev.lavalink.youtube.http.YoutubeHttpContextFilter;
 import dev.lavalink.youtube.track.format.StreamFormat;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpResponse;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -106,7 +106,7 @@ public class RemoteCipherManager implements CipherManager {
                 .done();
             request.setEntity(new StringEntity(requestBody, ContentType.APPLICATION_JSON));
 
-            try (CloseableHttpResponse response = configureHttpInterface(httpInterface).execute(request)) {
+            try (ClassicHttpResponse response = configureHttpInterface(httpInterface).execute(request)) {
                 String responseBody = validateAndGetResponseBody(response);
 
                 log.debug("Received response from remote cipher service: {}", responseBody);
@@ -153,7 +153,7 @@ public class RemoteCipherManager implements CipherManager {
         String requestBody = writer.end().done();
         request.setEntity(new StringEntity(requestBody, ContentType.APPLICATION_JSON));
 
-        try (CloseableHttpResponse response = configureHttpInterface(httpInterface).execute(request)) {
+        try (ClassicHttpResponse response = configureHttpInterface(httpInterface).execute(request)) {
             String responseBody = validateAndGetResponseBody(response);
             JsonBrowser json = JsonBrowser.parse(responseBody);
             String resolvedUrl = json.get("resolved_url").text();
@@ -169,10 +169,10 @@ public class RemoteCipherManager implements CipherManager {
     }
 
     @NotNull
-    public String validateAndGetResponseBody(@NotNull HttpResponse response) throws IOException {
-        int statusCode = response.getStatusLine().getStatusCode();
+    public String validateAndGetResponseBody(@NotNull ClassicHttpResponse response) throws IOException {
+        int statusCode = response.getCode();
         HttpEntity entity = response.getEntity();
-        String responseBody = (entity != null) ? EntityUtils.toString(entity, StandardCharsets.UTF_8) : null;
+        String responseBody = (entity != null) ? dev.lavalink.youtube.http.HttpUtils.entityToString(entity, StandardCharsets.UTF_8) : null;
 
         if (!HttpClientTools.isSuccessWithContent(statusCode)) {
             throw new IOException("Remote cipher service request to resolve URL failed with status code: " + statusCode + ". Response: " + responseBody);

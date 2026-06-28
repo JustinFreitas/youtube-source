@@ -8,10 +8,10 @@ import com.sedmelluq.discord.lavaplayer.tools.io.HttpInterface;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import dev.lavalink.youtube.YoutubeAudioSourceManager;
 import dev.lavalink.youtube.clients.skeleton.StreamingNonMusicClient;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.core5.net.URIBuilder;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -67,11 +67,11 @@ public class Web extends StreamingNonMusicClient {
     }
 
     protected void fetchClientConfig(@NotNull HttpInterface httpInterface) {
-        try (CloseableHttpResponse response = httpInterface.execute(new HttpGet("https://www.youtube.com"))) {
+        try (ClassicHttpResponse response = httpInterface.execute(new HttpGet("https://www.youtube.com"))) {
             HttpClientTools.assertSuccessWithContent(response, "client config fetch");
             lastConfigUpdate = System.currentTimeMillis();
 
-            String page = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+            String page = dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8);
             Matcher m = CONFIG_REGEX.matcher(page);
 
             if (!m.find()) {

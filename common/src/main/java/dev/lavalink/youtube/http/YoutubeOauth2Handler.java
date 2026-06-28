@@ -7,12 +7,12 @@ import com.sedmelluq.discord.lavaplayer.tools.JsonBrowser;
 import com.sedmelluq.discord.lavaplayer.tools.io.HttpClientTools;
 import com.sedmelluq.discord.lavaplayer.tools.io.HttpInterface;
 import com.sedmelluq.discord.lavaplayer.tools.io.HttpInterfaceManager;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.ClassicHttpRequest;
+import org.apache.hc.client5.http.protocol.HttpClientContext;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,7 +132,7 @@ public class YoutubeOauth2Handler {
         request.setEntity(body);
 
         try (HttpInterface httpInterface = getHttpInterface();
-             CloseableHttpResponse response = httpInterface.execute(request)) {
+             ClassicHttpResponse response = httpInterface.execute(request)) {
             HttpClientTools.assertSuccessWithContent(response, "device code fetch");
             return JsonBrowser.parse(response.getEntity().getContent());
         } catch (IOException e) {
@@ -167,7 +167,7 @@ public class YoutubeOauth2Handler {
         StringEntity body = new StringEntity(requestJson, ContentType.APPLICATION_JSON);
         request.setEntity(body);
 
-        try (CloseableHttpResponse response = httpInterface.execute(request)) {
+        try (ClassicHttpResponse response = httpInterface.execute(request)) {
             HttpClientTools.assertSuccessWithContent(response, "oauth2 token fetch");
             JsonBrowser parsed = JsonBrowser.parse(response.getEntity().getContent());
             log.debug("oauth2 token fetch response: {}", parsed.format());
@@ -277,7 +277,7 @@ public class YoutubeOauth2Handler {
         request.setEntity(entity);
 
         try (HttpInterface httpInterface = getHttpInterface();
-             CloseableHttpResponse response = httpInterface.execute(request)) {
+             ClassicHttpResponse response = httpInterface.execute(request)) {
             HttpClientTools.assertSuccessWithContent(response, "oauth2 token fetch");
             JsonBrowser parsed = JsonBrowser.parse(response.getEntity().getContent());
 
@@ -303,7 +303,7 @@ public class YoutubeOauth2Handler {
         log.debug("OAuth access token is {} and refresh token is {}. Access token expires in {} seconds.", accessToken, refreshToken, tokenLifespan);
     }
 
-    public void applyToken(HttpUriRequest request) {
+    public void applyToken(ClassicHttpRequest request) {
         if (!enabled || DataFormatTools.isNullOrEmpty(refreshToken)) {
             return;
         }
@@ -338,7 +338,7 @@ public class YoutubeOauth2Handler {
         }
     }
 
-    public void applyToken(HttpUriRequest request, String token) {
+    public void applyToken(ClassicHttpRequest request, String token) {
         request.setHeader("Authorization", String.format("%s %s", "Bearer", token));
     }
 

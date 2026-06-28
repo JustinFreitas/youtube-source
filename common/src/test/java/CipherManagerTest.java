@@ -3,13 +3,13 @@ import com.sedmelluq.discord.lavaplayer.tools.io.HttpInterface;
 import dev.lavalink.youtube.cipher.LocalSignatureCipherManager;
 import dev.lavalink.youtube.cipher.CipherManager;
 import dev.lavalink.youtube.track.format.StreamFormat;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.entity.ContentType;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.protocol.HttpClientContext;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -35,7 +35,7 @@ public class CipherManagerTest {
     @Disabled("Disabled as the current regex would not match the legacy scripts anyway...")
     public void testLegacyScripts() throws IOException {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpInterface httpInterface = new HttpInterface(httpClient, new HttpClientContext(), true, noOpFilter);
+            HttpInterface httpInterface = new HttpInterface(httpClient, HttpClientContext.create(), true, noOpFilter);
             for (TestCase test: scripts) {
                 CipherManager cipherManager = new LocalSignatureCipherManager();
 
@@ -60,7 +60,7 @@ public class CipherManagerTest {
     @Disabled("New YT Scripts are crazy")
     public void testCurrentYoutubeScript() throws IOException {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpInterface httpInterface = new HttpInterface(httpClient, new HttpClientContext(), true, noOpFilter);
+            HttpInterface httpInterface = new HttpInterface(httpClient, HttpClientContext.create(), true, noOpFilter);
             
             // Get the current script URL
             String currentPlayerScriptUrl = fetchCurrentPlayerScriptUrl(httpInterface);
@@ -116,7 +116,7 @@ public class CipherManagerTest {
     @Disabled("The legacy scripts wouldn't contain this new global variable and would fail anyway...")
     public void testLegacyScriptsWithCurrentImplementation() throws IOException {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpInterface httpInterface = new HttpInterface(httpClient, new HttpClientContext(), true, noOpFilter);
+            HttpInterface httpInterface = new HttpInterface(httpClient, HttpClientContext.create(), true, noOpFilter);
             System.out.println("\n=== Testing Legacy Scripts with Current Implementation ===");
             
             for (TestCase test: scripts) {
@@ -185,7 +185,7 @@ public class CipherManagerTest {
     @Disabled("New YT Scripts are crazy")
     public void testScriptCaching() throws IOException {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpInterface httpInterface = new HttpInterface(httpClient, new HttpClientContext(), true, noOpFilter);
+            HttpInterface httpInterface = new HttpInterface(httpClient, HttpClientContext.create(), true, noOpFilter);
             CipherManager cipherManager = new LocalSignatureCipherManager();
             
             // Get the current script URL
@@ -229,8 +229,8 @@ public class CipherManagerTest {
      * @throws IOException If an error occurs
      */
     private String fetchCurrentPlayerScriptUrl(HttpInterface httpInterface) throws IOException {
-        try (CloseableHttpResponse response = httpInterface.execute(new HttpGet("https://www.youtube.com/embed/"))) {
-            String responseText = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+        try (ClassicHttpResponse response = httpInterface.execute(new HttpGet("https://www.youtube.com/embed/"))) {
+            String responseText = dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8);
             
             // Extract the jsUrl from the response
             Pattern jsUrlPattern = Pattern.compile("\"jsUrl\":\"([^\"]+)\"");
@@ -262,17 +262,17 @@ public class CipherManagerTest {
         }
 
         @Override
-        public void onRequest(HttpClientContext context, org.apache.http.client.methods.HttpUriRequest request, boolean isRepetition) {
+        public void onRequest(HttpClientContext context, org.apache.hc.core5.http.ClassicHttpRequest request, boolean isRepetition) {
             // No operation
         }
 
         @Override
-        public boolean onRequestResponse(HttpClientContext context, org.apache.http.client.methods.HttpUriRequest request, org.apache.http.HttpResponse response) {
+        public boolean onRequestResponse(HttpClientContext context, org.apache.hc.core5.http.ClassicHttpRequest request, org.apache.hc.core5.http.HttpResponse response) {
             return false; // Do not retry by default
         }
 
         @Override
-        public boolean onRequestException(HttpClientContext context, org.apache.http.client.methods.HttpUriRequest request, Throwable exception) {
+        public boolean onRequestException(HttpClientContext context, org.apache.hc.core5.http.ClassicHttpRequest request, Throwable exception) {
             return false; // Do not retry by default
         }
 

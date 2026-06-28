@@ -6,9 +6,9 @@ import com.sedmelluq.discord.lavaplayer.tools.io.HttpClientTools;
 import com.sedmelluq.discord.lavaplayer.tools.io.HttpInterface;
 import dev.lavalink.youtube.ExceptionWithResponseBody;
 import dev.lavalink.youtube.track.format.StreamFormat;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -39,10 +39,10 @@ public interface CipherManager {
 
     default CachedPlayerScript getPlayerScript(@NotNull HttpInterface httpInterface) {
         synchronized (this) {
-            try (CloseableHttpResponse response = httpInterface.execute(new HttpGet("https://www.youtube.com/embed/"))) {
+            try (ClassicHttpResponse response = httpInterface.execute(new HttpGet("https://www.youtube.com/embed/"))) {
                 HttpClientTools.assertSuccessWithContent(response, "fetch player script (embed)");
 
-                String responseText = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                String responseText = dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8);
                 String scriptUrl = DataFormatTools.extractBetween(responseText, "\"jsUrl\":\"", "\"");
 
                 if (scriptUrl == null) {

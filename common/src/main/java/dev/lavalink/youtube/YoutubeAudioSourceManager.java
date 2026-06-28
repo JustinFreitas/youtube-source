@@ -23,8 +23,8 @@ import dev.lavalink.youtube.http.YoutubeAccessTokenTracker;
 import dev.lavalink.youtube.http.YoutubeHttpContextFilter;
 import dev.lavalink.youtube.http.YoutubeOauth2Handler;
 import dev.lavalink.youtube.track.YoutubeAudioTrack;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -322,9 +322,11 @@ public class YoutubeAudioSourceManager implements AudioSourceManager {
                     String videoIds = urlInfo.parameters.get("video_ids");
 
                     if (videoIds != null) {
-                        try (CloseableHttpResponse response = httpInterface.execute(new HttpGet("https://www.youtube.com/watch_videos?video_ids=" + videoIds))) {
+                        try (ClassicHttpResponse response = httpInterface.execute(new HttpGet("https://www.youtube.com/watch_videos?video_ids=" + videoIds))) {
                             HttpClientTools.assertSuccessWithContent(response, "playlist response");
-                            List<URI> redirects = httpInterface.getContext().getRedirectLocations();
+                            org.apache.hc.client5.http.protocol.RedirectLocations redirectLocations =
+                                httpInterface.getContext().getRedirectLocations();
+                            List<URI> redirects = redirectLocations != null ? redirectLocations.getAll() : null;
 
                             if (redirects != null && !redirects.isEmpty()) {
                                 return getRouter(httpInterface, redirects.get(0).toString());

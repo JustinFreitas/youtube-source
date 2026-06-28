@@ -14,6 +14,8 @@ base {
 dependencies {
     api(projects.common)
     compileOnly(libs.lavaplayer.v2)
+    compileOnly(libs.httpclient5)
+    compileOnly(libs.httpcore5)
 
     implementation(libs.rhino.engine)
     implementation(libs.nanojson)
@@ -21,6 +23,8 @@ dependencies {
     compileOnly(libs.annotations)
 
     testImplementation(libs.lavaplayer.v2)
+    testImplementation(libs.httpclient5)
+    testImplementation(libs.httpcore5)
 }
 
 mavenPublishing {

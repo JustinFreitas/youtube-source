@@ -4,15 +4,18 @@ import com.sedmelluq.discord.lavaplayer.tools.http.HttpContextRetryCounter;
 import com.sedmelluq.discord.lavaplayer.tools.io.HttpClientTools;
 import com.sedmelluq.discord.lavaplayer.tools.DataFormatTools;
 import dev.lavalink.youtube.clients.skeleton.Client;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.CookieStore;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.impl.client.BasicCookieStore;
+import org.apache.hc.core5.http.HttpResponse;
+import org.apache.hc.client5.http.cookie.CookieStore;
+import org.apache.hc.core5.http.ClassicHttpRequest;
+import org.apache.hc.client5.http.protocol.HttpClientContext;
+import org.apache.hc.client5.http.cookie.BasicCookieStore;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.URI;
+import java.net.URISyntaxException;
 
 import static dev.lavalink.youtube.http.YoutubeOauth2Handler.OAUTH_INJECT_CONTEXT_ATTRIBUTE;
 
@@ -65,7 +68,7 @@ public class YoutubeHttpContextFilter extends BaseYoutubeHttpContextFilter {
 
   @Override
   public void onRequest(HttpClientContext context,
-                        HttpUriRequest request,
+                        ClassicHttpRequest request,
                         boolean isRepetition) {
     if (!isRepetition) {
       context.removeAttribute(ATTRIBUTE_RESET_RETRY);
@@ -84,6 +87,14 @@ public class YoutubeHttpContextFilter extends BaseYoutubeHttpContextFilter {
 
     String userAgent = context.getAttribute(ATTRIBUTE_USER_AGENT_SPECIFIED, String.class);
 
+    // HttpClient 5's ClassicHttpRequest#getUri() throws URISyntaxException (unlike HC4's getURI()).
+    URI requestUri;
+    try {
+      requestUri = request.getUri();
+    } catch (URISyntaxException e) {
+      throw new RuntimeException(e);
+    }
+
     if (isRemoteCipherRequest(context)) {
       if (!DataFormatTools.isNullOrEmpty(remoteCipherPass)) {
         request.addHeader("Authorization", remoteCipherPass);
@@ -94,7 +105,7 @@ public class YoutubeHttpContextFilter extends BaseYoutubeHttpContextFilter {
       }
 
       request.addHeader("Plugin-Version", pluginVersion);
-    } else if (!request.getURI().getHost().contains("googlevideo")) {
+    } else if (!requestUri.getHost().contains("googlevideo")) {
       if (userAgent != null) {
         request.setHeader("User-Agent", userAgent);
 
@@ -109,7 +120,7 @@ public class YoutubeHttpContextFilter extends BaseYoutubeHttpContextFilter {
       //      required useless, because the attribute has already been removed.
       boolean isRequestFromOauthedClient = context.getAttribute(Client.OAUTH_CLIENT_ATTRIBUTE) == Boolean.TRUE;
 
-      if (isRequestFromOauthedClient && Client.PLAYER_URL.equals(request.getURI().toString())) {
+      if (isRequestFromOauthedClient && Client.PLAYER_URL.equals(requestUri.toString())) {
         // Look at the userdata for any provided oauth-token
         String oauthToken = context.getAttribute(OAUTH_INJECT_CONTEXT_ATTRIBUTE, String.class);
         // only apply the token to /player requests.
@@ -144,7 +155,7 @@ public class YoutubeHttpContextFilter extends BaseYoutubeHttpContextFilter {
 
   @Override
   public boolean onRequestResponse(HttpClientContext context,
-                                   HttpUriRequest request,
+                                   ClassicHttpRequest request,
                                    HttpResponse response) {
 
 //    if (tokenTracker.isTokenFetchContext(context) || retryCounter.getRetryCount(context) >= 1) {
@@ -155,7 +166,7 @@ public class YoutubeHttpContextFilter extends BaseYoutubeHttpContextFilter {
 
   @Override
   public boolean onRequestException(HttpClientContext context,
-                                    HttpUriRequest request,
+                                    ClassicHttpRequest request,
                                     Throwable error) {
     // Always retry once in case of connection reset exception.
     if (HttpClientTools.isConnectionResetException(error)) {

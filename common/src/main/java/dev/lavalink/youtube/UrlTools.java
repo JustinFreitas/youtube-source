@@ -1,8 +1,8 @@
 package dev.lavalink.youtube;
 
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.utils.URIBuilder;
+import org.apache.hc.core5.http.NameValuePair;
+import org.apache.hc.core5.net.URIBuilder;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.URISyntaxException;

@@ -12,14 +12,20 @@ base {
 }
 
 dependencies {
-    compileOnly(libs.lavaplayer.v1)
+    // Compile against the HC5 lavaplayer fork (v2) so the shared interfaces (HttpContextFilter,
+    // HttpInterface) resolve to their HttpClient-5 signatures.
+    compileOnly(libs.lavaplayer.v2)
+    compileOnly(libs.httpclient5)
+    compileOnly(libs.httpcore5)
 
     implementation(libs.rhino.engine)
     implementation(libs.nanojson)
     compileOnly(libs.slf4j)
     compileOnly(libs.annotations)
 
-    testImplementation(libs.lavaplayer.v1)
+    testImplementation(libs.lavaplayer.v2)
+    testImplementation(libs.httpclient5)
+    testImplementation(libs.httpcore5)
     testImplementation("org.apache.logging.log4j:log4j-core:2.19.0")
     testImplementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0")
 

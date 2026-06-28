@@ -32,8 +32,11 @@ subprojects {
     apply<MavenPublishPlugin>()
 
     configure<JavaPluginExtension> {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        // The lavaplayer fork is compiled to Java 25 bytecode, so this fork must match
+        // (an older JDK cannot even read the fork's class files).
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(25))
+        }
     }
 
     configure<PublishingExtension> {

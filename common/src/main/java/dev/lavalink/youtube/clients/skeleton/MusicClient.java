@@ -10,15 +10,16 @@ import dev.lavalink.youtube.OptionDisabledException;
 import dev.lavalink.youtube.YoutubeAudioSourceManager;
 import dev.lavalink.youtube.clients.ClientConfig;
 import dev.lavalink.youtube.track.format.TrackFormats;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,10 +40,10 @@ public abstract class MusicClient implements Client {
             .setAttributes(httpInterface);
 
         HttpPost request = new HttpPost(MUSIC_SEARCH_URL);
-        request.setEntity(new StringEntity(config.toJsonString(), "UTF-8"));
+        request.setEntity(new StringEntity(config.toJsonString(), StandardCharsets.UTF_8));
         request.setHeader("Referer", "music.youtube.com");
 
-        try (CloseableHttpResponse response = httpInterface.execute(request)) {
+        try (ClassicHttpResponse response = httpInterface.execute(request)) {
             HttpClientTools.assertSuccessWithContent(response, "search music response");
             return JsonBrowser.parse(response.getEntity().getContent());
         } catch (IOException e) {

@@ -2,22 +2,30 @@ rootProject.name = "youtube-source"
 
 include("v2")
 include("common")
-include("plugin")
+// The "plugin" module targets the standalone Lavalink server and is not consumed by ukulele
+// (which embeds lavaplayer directly), so it is excluded from this HttpClient-5 fork build.
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
-            version("lavaplayer-v1", "1.5.3")
-            version("lavaplayer-v2", "2.1.1")
+            // Justin's HttpClient-5 lavaplayer fork, consumed via JitPack. Both the v1 and v2
+            // catalog aliases point at the same fork so the shared `common` module compiles
+            // against the HC5 `HttpContextFilter`/`HttpInterface` signatures (see ukulele/build.gradle.kts).
+            version("lavaplayer-v1", "v2.2.6_16")
+            version("lavaplayer-v2", "v2.2.6_16")
 
-            library("lavaplayer-v1", "dev.arbjerg", "lavaplayer").versionRef("lavaplayer-v1")
-            library("lavaplayer-v2", "dev.arbjerg", "lavaplayer").versionRef("lavaplayer-v2")
+            library("lavaplayer-v1", "com.github.JustinFreitas.lavaplayer", "lavaplayer").versionRef("lavaplayer-v1")
+            library("lavaplayer-v2", "com.github.JustinFreitas.lavaplayer", "lavaplayer").versionRef("lavaplayer-v2")
 
             version("lavalink", "3.7.11")
             library("lavalink-server", "dev.arbjerg.lavalink", "Lavalink-Server").versionRef("lavalink")
-            library("lavaplayer-ext-youtube-rotator", "dev.arbjerg", "lavaplayer-ext-youtube-rotator").versionRef("lavaplayer-v1")
+            library("lavaplayer-ext-youtube-rotator", "com.github.JustinFreitas.lavaplayer", "lavaplayer-ext-youtube-rotator").versionRef("lavaplayer-v1")
+
+            // HttpClient 5, matching the lavaplayer fork's catalog (httpclient = 5.6.1).
+            library("httpclient5", "org.apache.httpcomponents.client5", "httpclient5").version("5.6.1")
+            library("httpcore5", "org.apache.httpcomponents.core5", "httpcore5").version("5.4.3")
 
             library("rhino-engine", "org.mozilla", "rhino-engine").version("1.7.15")
             library("nanojson", "com.grack", "nanojson").version("1.7")

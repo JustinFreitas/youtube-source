@@ -8,10 +8,10 @@ import dev.lavalink.youtube.ExceptionWithResponseBody;
 import dev.lavalink.youtube.YoutubeSource;
 import dev.lavalink.youtube.cipher.ScriptExtractionException.ExtractionFailureType;
 import dev.lavalink.youtube.track.format.StreamFormat;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.core5.net.URIBuilder;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.mozilla.javascript.engine.RhinoScriptEngineFactory;
@@ -195,15 +195,15 @@ public class LocalSignatureCipherManager implements CipherManager {
             synchronized (this) {
                 log.debug("Parsing player script {}", cipherScriptUrl);
 
-                try (CloseableHttpResponse response = httpInterface.execute(new HttpGet(CipherUtils.parseTokenScriptUrl(cipherScriptUrl)))) {
-                    int statusCode = response.getStatusLine().getStatusCode();
+                try (ClassicHttpResponse response = httpInterface.execute(new HttpGet(CipherUtils.parseTokenScriptUrl(cipherScriptUrl)))) {
+                    int statusCode = response.getCode();
 
                     if (!HttpClientTools.isSuccessWithContent(statusCode)) {
                         throw new IOException("Received non-success response code " + statusCode + " from script url " +
                             cipherScriptUrl + " ( " + CipherUtils.parseTokenScriptUrl(cipherScriptUrl) + " )");
                     }
 
-                    cipherKey = extractFromScript(EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8), cipherScriptUrl);
+                    cipherKey = extractFromScript(dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8), cipherScriptUrl);
                     cipherCache.put(cipherScriptUrl, cipherKey);
                 }
             }
@@ -217,15 +217,15 @@ public class LocalSignatureCipherManager implements CipherManager {
         synchronized (this) {
             log.debug("getting raw player script {}", cipherScriptUrl);
 
-            try (CloseableHttpResponse response = httpInterface.execute(new HttpGet(CipherUtils.parseTokenScriptUrl(cipherScriptUrl)))) {
-                int statusCode = response.getStatusLine().getStatusCode();
+            try (ClassicHttpResponse response = httpInterface.execute(new HttpGet(CipherUtils.parseTokenScriptUrl(cipherScriptUrl)))) {
+                int statusCode = response.getCode();
 
                 if (!HttpClientTools.isSuccessWithContent(statusCode)) {
                     throw new IOException("Received non-success response code " + statusCode + " from script url " +
                         cipherScriptUrl + " ( " + CipherUtils.parseTokenScriptUrl(cipherScriptUrl) + " )");
                 }
 
-                return EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                return dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8);
             }
         }
     }
@@ -258,15 +258,15 @@ public class LocalSignatureCipherManager implements CipherManager {
         synchronized (this) {
             log.debug("Timestamp from script {}", sourceUrl);
 
-            try (CloseableHttpResponse response = httpInterface.execute(new HttpGet(CipherUtils.parseTokenScriptUrl(sourceUrl)))) {
-                int statusCode = response.getStatusLine().getStatusCode();
+            try (ClassicHttpResponse response = httpInterface.execute(new HttpGet(CipherUtils.parseTokenScriptUrl(sourceUrl)))) {
+                int statusCode = response.getCode();
 
                 if (!HttpClientTools.isSuccessWithContent(statusCode)) {
                     throw new IOException("Received non-success response code " + statusCode + " from script url " +
                         sourceUrl + " ( " + CipherUtils.parseTokenScriptUrl(sourceUrl) + " )");
                 }
 
-                return getScriptTimestamp(httpInterface, EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8), sourceUrl);
+                return getScriptTimestamp(httpInterface, dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8), sourceUrl);
             }
         }
     }
