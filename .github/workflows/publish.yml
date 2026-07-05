@@ -78,3 +78,16 @@ jobs:
           omitDraftDuringUpdate: true
           omitNameDuringUpdate: true
           omitPrereleaseDuringUpdate: true
+
+      - name: Extract Lavaplayer Version
+        run: |
+          LAVA_VER=$(grep 'version("lavaplayer-v1"' settings.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "LAVA_VERSION=$LAVA_VER" >> $GITHUB_ENV
+
+      - name: Dispatch ukulele bump
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.PIPELINE_PAT }}
+          repository: JustinFreitas/ukulele
+          event-type: bump-deps
+          client-payload: '{"youtube_version": "${{ github.event.release.tag_name }}", "lavaplayer_version": "${{ env.LAVA_VERSION }}"}'
