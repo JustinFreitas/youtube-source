@@ -31,6 +31,7 @@ dependencies {
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.0-M1")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.0-M1")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.0-M1")
 }
 
 mavenPublishing {
