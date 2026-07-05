@@ -40,12 +40,6 @@ jobs:
           name: youtube-v2.jar
           path: v2/build/libs/youtube-v2-*.jar
 
-      - name: Upload plugin Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: youtube-plugin.jar
-          path: plugin/build/libs/youtube-plugin-*.jar
-
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -63,11 +57,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: youtube-v2.jar
-
-      - name: Download youtube-plugin Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: youtube-plugin.jar
 
       - name: Upload Artifacts to GitHub Release
         uses: ncipollo/release-action@v1
