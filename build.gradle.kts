@@ -3,7 +3,18 @@ import org.ajoberstar.grgit.Grgit
 plugins {
     java
     id("org.ajoberstar.grgit") version "5.2.0"
+    alias(libs.plugins.versions)
     alias(libs.plugins.maven.publish.base) apply false
+}
+
+tasks.withType<com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask> {
+    rejectVersionIf {
+        val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { candidate.version.uppercase().contains(it) }
+        val regex = "^[0-9,.v-]+(-r)?$".toRegex()
+        val isStable = stableKeyword || regex.matches(candidate.version)
+        !isStable
+    }
+    outputFormatter = "json,plain"
 }
 
 val (gitVersion, release) = versionFromGit()

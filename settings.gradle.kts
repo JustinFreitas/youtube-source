@@ -37,6 +37,9 @@ dependencyResolutionManagement {
             val mavenPublishPlugin = version("maven-publish-plugin", "0.37.0")
             plugin("maven-publish", "com.vanniktech.maven.publish").versionRef(mavenPublishPlugin)
             plugin("maven-publish-base", "com.vanniktech.maven.publish.base").versionRef(mavenPublishPlugin)
+
+            version("ben-manes-versions", "0.54.0")
+            plugin("versions", "com.github.ben-manes.versions").versionRef("ben-manes-versions")
         }
     }
 }
