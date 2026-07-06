@@ -25,7 +25,7 @@ public class UrlTools {
                 .filter(it -> it.getValue() != null)
                 .collect(Collectors.toMap(NameValuePair::getName, NameValuePair::getValue, (a, b) -> a)));
         } catch (URISyntaxException e) {
-            if (retryValidPart) {
+            if (retryValidPart && e.getIndex() > 0 && e.getIndex() <= url.length()) {
                 return getUrlInfo(url.substring(0, e.getIndex() - 1), false);
             } else {
                 throw new FriendlyException("Not a valid URL: " + url, COMMON, e);

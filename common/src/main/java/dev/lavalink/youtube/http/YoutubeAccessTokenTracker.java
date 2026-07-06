@@ -26,8 +26,8 @@ public class YoutubeAccessTokenTracker {
 
   private final Object tokenLock = new Object();
   private final HttpInterfaceManager httpInterfaceManager;
-  private String visitorId;
-  private long lastVisitorIdUpdate;
+  private volatile String visitorId;
+  private volatile long lastVisitorIdUpdate;
 
   public YoutubeAccessTokenTracker(@NotNull HttpInterfaceManager httpInterfaceManager) {
     this.httpInterfaceManager = httpInterfaceManager;
@@ -39,7 +39,7 @@ public class YoutubeAccessTokenTracker {
   public String getVisitorId() {
     long now = System.currentTimeMillis();
 
-    if (visitorId == null || now - lastVisitorIdUpdate < VISITOR_ID_REFRESH_INTERVAL) {
+    if (visitorId == null || now - lastVisitorIdUpdate > VISITOR_ID_REFRESH_INTERVAL) {
       synchronized (tokenLock) {
         if (now - lastVisitorIdUpdate < VISITOR_ID_REFRESH_INTERVAL) {
           log.debug("YouTube visitor id was recently updated, not updating again right away.");

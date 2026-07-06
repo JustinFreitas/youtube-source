@@ -26,12 +26,12 @@ dependencies {
     testImplementation(libs.lavaplayer.v2)
     testImplementation(libs.httpclient5)
     testImplementation(libs.httpcore5)
-    testImplementation("org.apache.logging.log4j:log4j-core:2.19.0")
-    testImplementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0")
+    testImplementation("org.apache.logging.log4j:log4j-core:2.26.1")
+    testImplementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.26.1")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.0-M1")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.0-M1")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.0-M1")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.3")
 }
 
 mavenPublishing {

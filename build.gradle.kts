@@ -2,7 +2,7 @@ import org.ajoberstar.grgit.Grgit
 
 plugins {
     java
-    id("org.ajoberstar.grgit") version "5.2.0"
+    id("org.ajoberstar.grgit") version "5.3.3"
     alias(libs.plugins.versions)
     alias(libs.plugins.maven.publish.base) apply false
 }
@@ -48,6 +48,10 @@ subprojects {
         toolchain {
             languageVersion.set(JavaLanguageVersion.of(25))
         }
+    }
+
+    tasks.withType<JavaCompile> {
+        options.encoding = "UTF-8"
     }
 
     configure<PublishingExtension> {

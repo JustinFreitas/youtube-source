@@ -39,9 +39,9 @@ public class YoutubeOauth2Handler {
     private boolean enabled;
     private String refreshToken;
 
-    private String tokenType;
-    private String accessToken;
-    private long tokenExpires;
+    private volatile String tokenType;
+    private volatile String accessToken;
+    private volatile long tokenExpires;
 
     public YoutubeOauth2Handler(HttpInterfaceManager httpInterfaceManager) {
         this.httpInterfaceManager = httpInterfaceManager;

@@ -91,7 +91,7 @@ public class LocalSignatureCipherManager implements CipherManager {
 
     private final ConcurrentMap<String, SignatureCipher> cipherCache;
     private final Set<String> dumpedScriptUrls;
-    private final ScriptEngine scriptEngine;
+    private final ThreadLocal<ScriptEngine> scriptEngine;
 
     protected volatile CachedPlayerScript cachedPlayerScript;
 
@@ -100,8 +100,8 @@ public class LocalSignatureCipherManager implements CipherManager {
      */
     public LocalSignatureCipherManager() {
         this.cipherCache = new ConcurrentHashMap<>();
-        this.dumpedScriptUrls = new HashSet<>();
-        this.scriptEngine = new RhinoScriptEngineFactory().getScriptEngine();
+        this.dumpedScriptUrls = ConcurrentHashMap.newKeySet();
+        this.scriptEngine = ThreadLocal.withInitial(() -> new RhinoScriptEngineFactory().getScriptEngine());
     }
 
     /**
@@ -125,9 +125,11 @@ public class LocalSignatureCipherManager implements CipherManager {
 
         SignatureCipher cipher = getCipherScript(httpInterface, playerScript);
 
+        ScriptEngine engine = scriptEngine.get();
+
         if (!DataFormatTools.isNullOrEmpty(signature)) {
             try {
-                uri.setParameter(format.getSignatureKey(), cipher.apply(signature, scriptEngine));
+                uri.setParameter(format.getSignatureKey(), cipher.apply(signature, engine));
             } catch (ScriptException | NoSuchMethodException e) {
                 dumpProblematicScript(cipherCache.get(playerScript).rawScript, playerScript, "Can't transform s parameter " + signature);
             }
@@ -136,7 +138,7 @@ public class LocalSignatureCipherManager implements CipherManager {
 
         if (!DataFormatTools.isNullOrEmpty(nParameter)) {
             try {
-                String transformed = cipher.transform(nParameter, scriptEngine);
+                String transformed = cipher.transform(nParameter, engine);
                 String logMessage = null;
 
                 if (transformed == null) {
@@ -193,18 +195,27 @@ public class LocalSignatureCipherManager implements CipherManager {
 
         if (cipherKey == null) {
             synchronized (this) {
-                log.debug("Parsing player script {}", cipherScriptUrl);
+                cipherKey = cipherCache.get(cipherScriptUrl);
 
-                try (ClassicHttpResponse response = httpInterface.execute(new HttpGet(CipherUtils.parseTokenScriptUrl(cipherScriptUrl)))) {
-                    int statusCode = response.getCode();
+                if (cipherKey == null) {
+                    log.debug("Parsing player script {}", cipherScriptUrl);
 
-                    if (!HttpClientTools.isSuccessWithContent(statusCode)) {
-                        throw new IOException("Received non-success response code " + statusCode + " from script url " +
-                            cipherScriptUrl + " ( " + CipherUtils.parseTokenScriptUrl(cipherScriptUrl) + " )");
+                    try (ClassicHttpResponse response = httpInterface.execute(new HttpGet(CipherUtils.parseTokenScriptUrl(cipherScriptUrl)))) {
+                        int statusCode = response.getCode();
+
+                        if (!HttpClientTools.isSuccessWithContent(statusCode)) {
+                            throw new IOException("Received non-success response code " + statusCode + " from script url " +
+                                cipherScriptUrl + " ( " + CipherUtils.parseTokenScriptUrl(cipherScriptUrl) + " )");
+                        }
+
+                        cipherKey = extractFromScript(dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8), cipherScriptUrl);
+                        
+                        if (cipherCache.size() > 100) {
+                            cipherCache.clear();
+                        }
+
+                        cipherCache.put(cipherScriptUrl, cipherKey);
                     }
-
-                    cipherKey = extractFromScript(dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8), cipherScriptUrl);
-                    cipherCache.put(cipherScriptUrl, cipherKey);
                 }
             }
         }
