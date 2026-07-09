@@ -1,7 +1,6 @@
 import org.ajoberstar.grgit.Grgit
 
 plugins {
-    java
     id("org.ajoberstar.grgit") version "5.3.3"
     alias(libs.plugins.versions)
     alias(libs.plugins.maven.publish.base) apply false
