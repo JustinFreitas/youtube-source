@@ -20,10 +20,11 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class YoutubeOauth2Handler {
     private static final Logger log = LoggerFactory.getLogger(YoutubeOauth2Handler.class);
-    private static int fetchErrorLogCount = 0;
+    private static final AtomicInteger fetchErrorLogCount = new AtomicInteger(0);
 
     // no, i haven't leaked anything of mine
     // this (i presume) can be found within youtube's page source
@@ -36,8 +37,8 @@ public class YoutubeOauth2Handler {
 
     private final HttpInterfaceManager httpInterfaceManager;
 
-    private boolean enabled;
-    private String refreshToken;
+    private volatile boolean enabled;
+    private volatile String refreshToken;
 
     private volatile String tokenType;
     private volatile String accessToken;
@@ -314,7 +315,7 @@ public class YoutubeOauth2Handler {
             try {
                 refreshAccessToken(false);
             } catch (Throwable t) {
-                if (++fetchErrorLogCount <= 3) {
+                if (fetchErrorLogCount.incrementAndGet() <= 3) {
                     // log fetch errors up to 3 consecutive times to avoid spamming logs. in theory requests can still be made
                     // without an access token, but they are less likely to succeed. regardless, we shouldn't bloat a
                     // user's logs just in case YT changed something and broke oauth integration.
@@ -328,7 +329,7 @@ public class YoutubeOauth2Handler {
                 return;
             }
 
-            fetchErrorLogCount = 0;
+            fetchErrorLogCount.set(0);
         }
 
         // check again to ensure updating worked as expected.

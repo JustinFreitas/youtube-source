@@ -41,19 +41,22 @@ public class YoutubeAccessTokenTracker {
 
     if (visitorId == null || now - lastVisitorIdUpdate > VISITOR_ID_REFRESH_INTERVAL) {
       synchronized (tokenLock) {
-        if (now - lastVisitorIdUpdate < VISITOR_ID_REFRESH_INTERVAL) {
+        long currentNow = System.currentTimeMillis();
+        if (visitorId != null && currentNow - lastVisitorIdUpdate < VISITOR_ID_REFRESH_INTERVAL) {
           log.debug("YouTube visitor id was recently updated, not updating again right away.");
           return visitorId;
         }
 
-        lastVisitorIdUpdate = now;
-
         try {
-          visitorId = fetchVisitorId();
-          log.info("Updating YouTube visitor id succeeded, new one is {}, next update will be after {} seconds.",
-              visitorId,
-              TimeUnit.MILLISECONDS.toSeconds(VISITOR_ID_REFRESH_INTERVAL)
-          );
+          String newVisitorId = fetchVisitorId();
+          if (newVisitorId != null) {
+            visitorId = newVisitorId;
+            lastVisitorIdUpdate = currentNow;
+            log.info("Updating YouTube visitor id succeeded, new one is {}, next update will be after {} seconds.",
+                visitorId,
+                TimeUnit.MILLISECONDS.toSeconds(VISITOR_ID_REFRESH_INTERVAL)
+            );
+          }
         } catch (Exception e) {
           log.error("YouTube visitor id update failed.", e);
         }

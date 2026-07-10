@@ -17,8 +17,7 @@ import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
+
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -133,7 +132,7 @@ public abstract class NonMusicClient implements Client {
 
         // For embedded clients, fetch and include encryptedHostFlags to avoid playback restrictions.
         if (isEmbedded()) {
-            String encryptedHostFlags = fetchEncryptedHostFlags(videoId);
+            String encryptedHostFlags = fetchEncryptedHostFlags(httpInterface, videoId);
             if (encryptedHostFlags != null) {
                 config.withEncryptedHostFlags(encryptedHostFlags);
             }
@@ -197,25 +196,27 @@ public abstract class NonMusicClient implements Client {
      * Fetches the encryptedHostFlags from the YouTube embed page.
      * This is required for embedded clients to avoid playback restrictions.
      *
+     * @param httpInterface The HTTP interface to use for requests.
      * @param videoId The video ID to fetch the embed page for.
      * @return The encryptedHostFlags value, or null if not found.
      */
     @Nullable
-    protected String fetchEncryptedHostFlags(@NotNull String videoId) {
+    protected String fetchEncryptedHostFlags(@NotNull HttpInterface httpInterface, @NotNull String videoId) {
         String embedUrl = "https://www.youtube.com/embed/" + videoId;
 
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+        try {
             HttpGet request = new HttpGet(embedUrl);
             request.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
-            ClassicHttpResponse response = httpClient.execute(request);
-            String html = dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8);
+            try (ClassicHttpResponse response = httpInterface.execute(request)) {
+                String html = dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8);
 
-            Pattern pattern = Pattern.compile("\"encryptedHostFlags\":\"([^\"]+)\"");
-            Matcher matcher = pattern.matcher(html);
+                Pattern pattern = Pattern.compile("\"encryptedHostFlags\":\"([^\"]+)\"");
+                Matcher matcher = pattern.matcher(html);
 
-            if (matcher.find()) {
-                return matcher.group(1);
+                if (matcher.find()) {
+                    return matcher.group(1);
+                }
             }
         } catch (IOException e) {
             log.debug("Failed to fetch encryptedHostFlags for video {}", videoId, e);
