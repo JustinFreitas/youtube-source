@@ -4,6 +4,7 @@ import org.apache.tools.ant.filters.ReplaceTokens
 
 plugins {
     `java-library`
+    groovy
     alias(libs.plugins.maven.publish.base)
 }
 
@@ -31,7 +32,14 @@ dependencies {
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.1")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.1")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.1")
+    testRuntimeOnly(libs.junit.platform.launcher)
+
+    // Spock
+    testImplementation(libs.groovy)
+    testImplementation(libs.spock.core)
+    testImplementation(libs.byte.buddy)
+    testImplementation(libs.byte.buddy.agent)
+    testImplementation(libs.objenesis)
 }
 
 mavenPublishing {

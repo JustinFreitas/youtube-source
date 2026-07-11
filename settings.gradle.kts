@@ -32,6 +32,14 @@ dependencyResolutionManagement {
             library("slf4j", "org.slf4j", "slf4j-api").version("2.0.18")
             library("annotations", "org.jetbrains", "annotations").version("26.1.0")
 
+            library("groovy", "org.apache.groovy", "groovy").version("5.0.7")
+            library("spock-core", "org.spockframework", "spock-core").version("2.4-groovy-5.0")
+            library("logback-classic", "ch.qos.logback", "logback-classic").version("1.5.38")
+            library("byte-buddy", "net.bytebuddy", "byte-buddy").version("1.18.11")
+            library("byte-buddy-agent", "net.bytebuddy", "byte-buddy-agent").version("1.18.11")
+            library("objenesis", "org.objenesis", "objenesis").version("3.4")
+            library("junit-platform-launcher", "org.junit.platform", "junit-platform-launcher").version("1.11.1")
+
             plugin("lavalink-gradle-plugin", "dev.arbjerg.lavalink.gradle-plugin").version("1.1.2")
 
             val mavenPublishPlugin = version("maven-publish-plugin", "0.37.0")
