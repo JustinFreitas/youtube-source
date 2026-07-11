@@ -57,8 +57,8 @@ public class YoutubePersistentHttpStream extends PersistentHttpStream {
                     result = currentContent.read(b, off, len);
                     position += result;
                 } else {
-                    result = 0;
                     handleRangeEnd(null, attemptReconnect);
+                    return internalRead(b, off, len, false);
                 }
             } else {
                 result = currentContent.read(b, off, len);

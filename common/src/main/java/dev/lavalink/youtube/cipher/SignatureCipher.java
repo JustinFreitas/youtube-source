@@ -41,11 +41,12 @@ public class SignatureCipher {
      */
     public String apply(@NotNull String text,
                         @NotNull ScriptEngine scriptEngine) throws ScriptException, NoSuchMethodException {
-        String transformed;
-
-        scriptEngine.eval(globalVars + ";" + sigActions + ";decrypt_sig=" + sigFunction);
-        transformed = (String) ((Invocable) scriptEngine).invokeFunction("decrypt_sig", text);
-        return transformed;
+        Object loadedCipher = scriptEngine.get("loaded_cipher_id");
+        if (!java.util.Objects.equals(loadedCipher, this.hashCode())) {
+            scriptEngine.eval(globalVars + ";" + sigActions + ";decrypt_sig=" + sigFunction);
+            scriptEngine.put("loaded_cipher_id", this.hashCode());
+        }
+        return (String) ((Invocable) scriptEngine).invokeFunction("decrypt_sig", text);
     }
 
 //  /**
@@ -85,12 +86,12 @@ public class SignatureCipher {
      */
     public String transform(@NotNull String text, @NotNull ScriptEngine scriptEngine)
         throws ScriptException, NoSuchMethodException {
-        String transformed;
-
-        scriptEngine.eval(globalVars + ";decrypt_nsig=" + nFunction);
-        transformed = (String) ((Invocable) scriptEngine).invokeFunction("decrypt_nsig", text);
-
-        return transformed;
+        Object loadedNsig = scriptEngine.get("loaded_nsig_id");
+        if (!java.util.Objects.equals(loadedNsig, this.hashCode())) {
+            scriptEngine.eval(globalVars + ";decrypt_nsig=" + nFunction);
+            scriptEngine.put("loaded_nsig_id", this.hashCode());
+        }
+        return (String) ((Invocable) scriptEngine).invokeFunction("decrypt_nsig", text);
     }
 
 //  /**
