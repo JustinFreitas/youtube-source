@@ -37,8 +37,8 @@ dependencyResolutionManagement {
             library("logback-classic", "ch.qos.logback", "logback-classic").version("1.5.38")
             library("byte-buddy", "net.bytebuddy", "byte-buddy").version("1.18.11")
             library("byte-buddy-agent", "net.bytebuddy", "byte-buddy-agent").version("1.18.11")
-            library("objenesis", "org.objenesis", "objenesis").version("3.4")
-            library("junit-platform-launcher", "org.junit.platform", "junit-platform-launcher").version("1.11.1")
+            library("objenesis", "org.objenesis", "objenesis").version("3.5")
+            library("junit-platform-launcher", "org.junit.platform", "junit-platform-launcher").version("6.1.2")
 
             plugin("lavalink-gradle-plugin", "dev.arbjerg.lavalink.gradle-plugin").version("1.1.2")
 
