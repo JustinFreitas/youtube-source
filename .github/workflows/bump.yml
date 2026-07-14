@@ -53,7 +53,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PIPELINE_PAT }}
         run: |
-          LATEST_TAG=$(gh release list --limit 1 | awk '{print $1}')
+          LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
           # Increment the patch number after the underscore (e.g., v1.18.1_1 -> v1.18.1_2)
           BASE=$(echo $LATEST_TAG | awk -F_ '{print $1}')
           PATCH=$(echo $LATEST_TAG | awk -F_ '{print $2}')
