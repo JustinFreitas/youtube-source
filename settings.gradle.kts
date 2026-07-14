@@ -13,8 +13,8 @@ dependencyResolutionManagement {
             // Justin's HttpClient-5 lavaplayer fork, consumed via JitPack. Both the v1 and v2
             // catalog aliases point at the same fork so the shared `common` module compiles
             // against the HC5 `HttpContextFilter`/`HttpInterface` signatures (see ukulele/build.gradle.kts).
-            version("lavaplayer-v1", "v2.2.7_2")
-            version("lavaplayer-v2", "v2.2.7_2")
+            version("lavaplayer-v1", "v2.2.7_3")
+            version("lavaplayer-v2", "v2.2.7_3")
 
             library("lavaplayer-v1", "com.github.JustinFreitas.lavaplayer", "lavaplayer").versionRef("lavaplayer-v1")
             library("lavaplayer-v2", "com.github.JustinFreitas.lavaplayer", "lavaplayer").versionRef("lavaplayer-v2")
