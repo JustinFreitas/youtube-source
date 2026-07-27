@@ -30,8 +30,8 @@ dependencies {
     testImplementation("org.apache.logging.log4j:log4j-core:2.26.1")
     testImplementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.26.1")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.1")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.2")
     testRuntimeOnly(libs.junit.platform.launcher)
 
     // Spock
