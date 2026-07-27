@@ -12,6 +12,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.PIPELINE_PAT }}
+          # Tags are the source of truth for the next version below, and the default shallow
+          # checkout fetches none of them.
+          fetch-depth: 0
 
       - name: Update settings.gradle.kts
         run: |
@@ -53,11 +56,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PIPELINE_PAT }}
         run: |
-          LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
-          # Increment the patch number after the underscore (e.g., v1.18.1_1 -> v1.18.1_2)
+          # Derive the next version from tags rather than releases. A tag cut by hand has no
+          # release attached, and reading releases would then hand back a version that already
+          # exists as a tag - the release creation below fails on the collision.
+          LATEST_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+_[0-9]+$' | head -1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No existing version tag to increment from." >&2
+            exit 1
+          fi
+
+          # Increment the fork iteration after the underscore (e.g., v1.18.1_1 -> v1.18.1_2)
           BASE=$(echo $LATEST_TAG | awk -F_ '{print $1}')
           PATCH=$(echo $LATEST_TAG | awk -F_ '{print $2}')
           NEXT_PATCH=$((PATCH + 1))
           NEW_TAG="${BASE}_${NEXT_PATCH}"
-          
+
+          echo "Latest tag $LATEST_TAG -> new tag $NEW_TAG"
           gh release create $NEW_TAG --generate-notes
