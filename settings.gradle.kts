@@ -13,8 +13,8 @@ dependencyResolutionManagement {
             // Justin's HttpClient-5 lavaplayer fork, consumed via JitPack. Both the v1 and v2
             // catalog aliases point at the same fork so the shared `common` module compiles
             // against the HC5 `HttpContextFilter`/`HttpInterface` signatures (see ukulele/build.gradle.kts).
-            version("lavaplayer-v1", "v2.2.7_6")
-            version("lavaplayer-v2", "v2.2.7_6")
+            version("lavaplayer-v1", "v2.2.7_7")
+            version("lavaplayer-v2", "v2.2.7_7")
 
             library("lavaplayer-v1", "com.github.JustinFreitas.lavaplayer", "lavaplayer").versionRef("lavaplayer-v1")
             library("lavaplayer-v2", "com.github.JustinFreitas.lavaplayer", "lavaplayer").versionRef("lavaplayer-v2")
@@ -34,7 +34,7 @@ dependencyResolutionManagement {
 
             library("groovy", "org.apache.groovy", "groovy").version("5.0.7")
             library("spock-core", "org.spockframework", "spock-core").version("2.4-groovy-5.0")
-            library("logback-classic", "ch.qos.logback", "logback-classic").version("1.5.38")
+            library("logback-classic", "ch.qos.logback", "logback-classic").version("1.6.1")
             library("byte-buddy", "net.bytebuddy", "byte-buddy").version("1.18.11")
             library("byte-buddy-agent", "net.bytebuddy", "byte-buddy-agent").version("1.18.11")
             library("objenesis", "org.objenesis", "objenesis").version("3.5")
