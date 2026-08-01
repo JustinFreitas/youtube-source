@@ -46,7 +46,7 @@ dependencyResolutionManagement {
             plugin("maven-publish", "com.vanniktech.maven.publish").versionRef(mavenPublishPlugin)
             plugin("maven-publish-base", "com.vanniktech.maven.publish.base").versionRef(mavenPublishPlugin)
 
-            version("ben-manes-versions", "0.57.0")
+            version("ben-manes-versions", "0.58.0")
             plugin("versions", "com.github.ben-manes.versions").versionRef("ben-manes-versions")
         }
     }
