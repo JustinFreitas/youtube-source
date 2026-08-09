@@ -38,7 +38,7 @@ dependencyResolutionManagement {
             library("byte-buddy", "net.bytebuddy", "byte-buddy").version("1.18.11")
             library("byte-buddy-agent", "net.bytebuddy", "byte-buddy-agent").version("1.18.11")
             library("objenesis", "org.objenesis", "objenesis").version("3.6")
-            library("junit-platform-launcher", "org.junit.platform", "junit-platform-launcher").version("6.1.2")
+            library("junit-platform-launcher", "org.junit.platform", "junit-platform-launcher").version("6.1.3")
 
             plugin("lavalink-gradle-plugin", "dev.arbjerg.lavalink.gradle-plugin").version("1.1.2")
 
@@ -46,7 +46,7 @@ dependencyResolutionManagement {
             plugin("maven-publish", "com.vanniktech.maven.publish").versionRef(mavenPublishPlugin)
             plugin("maven-publish-base", "com.vanniktech.maven.publish.base").versionRef(mavenPublishPlugin)
 
-            version("ben-manes-versions", "0.59.0")
+            version("ben-manes-versions", "0.60.0")
             plugin("versions", "com.github.ben-manes.versions").versionRef("ben-manes-versions")
         }
     }
