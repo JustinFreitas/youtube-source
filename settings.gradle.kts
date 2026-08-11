@@ -24,7 +24,7 @@ dependencyResolutionManagement {
             library("lavaplayer-ext-youtube-rotator", "com.github.JustinFreitas.lavaplayer", "lavaplayer-ext-youtube-rotator").versionRef("lavaplayer-v1")
 
             // HttpClient 5, matching the lavaplayer fork's catalog (httpclient = 5.6.1).
-            library("httpclient5", "org.apache.httpcomponents.client5", "httpclient5").version("5.6.3")
+            library("httpclient5", "org.apache.httpcomponents.client5", "httpclient5").version("5.6.4")
             library("httpcore5", "org.apache.httpcomponents.core5", "httpcore5").version("5.4.3")
 
             library("rhino-engine", "org.mozilla", "rhino-engine").version("1.9.1")
@@ -46,7 +46,7 @@ dependencyResolutionManagement {
             plugin("maven-publish", "com.vanniktech.maven.publish").versionRef(mavenPublishPlugin)
             plugin("maven-publish-base", "com.vanniktech.maven.publish.base").versionRef(mavenPublishPlugin)
 
-            version("ben-manes-versions", "0.60.0")
+            version("ben-manes-versions", "0.61.0")
             plugin("versions", "com.github.ben-manes.versions").versionRef("ben-manes-versions")
         }
     }
