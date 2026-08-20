@@ -118,7 +118,7 @@ public class YoutubeHttpContextFilter extends BaseYoutubeHttpContextFilter {
 
       // fix: getAttribute is needed over removeAttribute as this renders subsequent requests where oauth is
       //      required useless, because the attribute has already been removed.
-      boolean isRequestFromOauthedClient = context.getAttribute(Client.OAUTH_CLIENT_ATTRIBUTE) == Boolean.TRUE;
+      boolean isRequestFromOauthedClient = Boolean.TRUE.equals(context.getAttribute(Client.OAUTH_CLIENT_ATTRIBUTE, Boolean.class));
 
       if (isRequestFromOauthedClient && Client.PLAYER_URL.equals(requestUri.toString())) {
         // Look at the userdata for any provided oauth-token

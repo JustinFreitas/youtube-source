@@ -18,9 +18,10 @@ import dev.lavalink.youtube.cipher.ScriptExtractionException;
 import dev.lavalink.youtube.clients.skeleton.Client;
 import dev.lavalink.youtube.track.format.StreamFormat;
 import dev.lavalink.youtube.track.format.TrackFormats;
-import org.apache.http.Header;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -206,7 +207,7 @@ public class YoutubeAudioTrack extends DelegatedAudioTrack {
     HttpGet request = new HttpGet(url);
     request.setHeader("Range", "bytes=0-0");
 
-    try (CloseableHttpResponse response = httpInterface.execute(request)) {
+    try (ClassicHttpResponse response = httpInterface.execute(request)) {
       Header contentRange = response.getFirstHeader("Content-Range");
       int totalIndex = contentRange != null ? contentRange.getValue().lastIndexOf('/') : -1;
 
@@ -217,6 +218,8 @@ public class YoutubeAudioTrack extends DelegatedAudioTrack {
           return Long.parseLong(total);
         }
       }
+
+      EntityUtils.consumeQuietly(response.getEntity());
     } catch (Exception e) {
       log.debug("Failed to probe content length for {}", url, e);
     }
