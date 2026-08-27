@@ -32,7 +32,7 @@ dependencyResolutionManagement {
             library("slf4j", "org.slf4j", "slf4j-api").version("2.0.18")
             library("annotations", "org.jetbrains", "annotations").version("26.1.0")
 
-            library("groovy", "org.apache.groovy", "groovy").version("5.1.0")
+            library("groovy", "org.apache.groovy", "groovy").version("5.1.1")
             library("spock-core", "org.spockframework", "spock-core").version("2.4-groovy-5.0")
             library("logback-classic", "ch.qos.logback", "logback-classic").version("1.6.3")
             library("byte-buddy", "net.bytebuddy", "byte-buddy").version("1.18.12")
