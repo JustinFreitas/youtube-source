@@ -29,7 +29,7 @@ dependencyResolutionManagement {
 
             library("rhino-engine", "org.mozilla", "rhino-engine").version("1.9.1")
             library("nanojson", "com.grack", "nanojson").version("1.10")
-            library("slf4j", "org.slf4j", "slf4j-api").version("2.0.18")
+            library("slf4j", "org.slf4j", "slf4j-api").version("2.0.19")
             library("annotations", "org.jetbrains", "annotations").version("26.1.0")
 
             library("groovy", "org.apache.groovy", "groovy").version("5.1.1")
