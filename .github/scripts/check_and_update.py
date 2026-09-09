@@ -108,23 +108,22 @@ def get_next_version():
         print(f"Error running git tag: {e}", file=sys.stderr)
         tags_output = []
 
-    pattern = re.compile(r'^v?(\d+\.\d+\.\d+)_(\d+)$')
-    highest_suffix = -1
-    base_version = "1.18.1"
-    
+    pattern = re.compile(r'^v?(\d+)\.(\d+)\.(\d+)_(\d+)$')
+    highest_tag_tuple = None
+
     for tag in tags_output:
-        match = pattern.match(tag)
+        match = pattern.match(tag.strip())
         if match:
-            b_ver, suffix_str = match.groups()
-            suffix = int(suffix_str)
-            if suffix > highest_suffix:
-                highest_suffix = suffix
-                base_version = b_ver
-                
-    if highest_suffix != -1:
-        return f"v{base_version}_{highest_suffix + 1}"
+            major, minor, patch, suffix = map(int, match.groups())
+            tag_tuple = (major, minor, patch, suffix)
+            if highest_tag_tuple is None or tag_tuple > highest_tag_tuple:
+                highest_tag_tuple = tag_tuple
+
+    if highest_tag_tuple is not None:
+        maj, min_, pat, suf = highest_tag_tuple
+        return f"v{maj}.{min_}.{pat}_{suf + 1}"
     else:
-        return "v1.18.1_4"
+        return "v1.18.2_10"
 
 def update_changelog(next_version, changes):
     changelog_path = os.path.join(ROOT_DIR, "CHANGELOG.md")
