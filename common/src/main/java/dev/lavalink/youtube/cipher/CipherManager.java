@@ -39,16 +39,21 @@ public interface CipherManager {
 
     default CachedPlayerScript getPlayerScript(@NotNull HttpInterface httpInterface) {
         synchronized (this) {
+            String scriptUrl;
             try (ClassicHttpResponse response = httpInterface.execute(new HttpGet("https://www.youtube.com/embed/"))) {
                 HttpClientTools.assertSuccessWithContent(response, "fetch player script (embed)");
 
                 String responseText = dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8);
-                String scriptUrl = DataFormatTools.extractBetween(responseText, "\"jsUrl\":\"", "\"");
+                scriptUrl = DataFormatTools.extractBetween(responseText, "\"jsUrl\":\"", "\"");
 
                 if (scriptUrl == null) {
                     throw new ExceptionWithResponseBody("no jsUrl found", responseText);
                 }
+            } catch (IOException e) {
+                throw ExceptionTools.toRuntimeException(e);
+            }
 
+            try {
                 return new CachedPlayerScript(scriptUrl, getTimestamp(httpInterface, scriptUrl));
             } catch (IOException e) {
                 throw ExceptionTools.toRuntimeException(e);
