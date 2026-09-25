@@ -25,7 +25,7 @@ dependencyResolutionManagement {
 
             // HttpClient 5, matching the lavaplayer fork's catalog (httpclient = 5.6.1).
             library("httpclient5", "org.apache.httpcomponents.client5", "httpclient5").version("5.6.4")
-            library("httpcore5", "org.apache.httpcomponents.core5", "httpcore5").version("5.4.3")
+            library("httpcore5", "org.apache.httpcomponents.core5", "httpcore5").version("5.4.4")
 
             library("rhino-engine", "org.mozilla", "rhino-engine").version("1.9.1")
             library("nanojson", "com.grack", "nanojson").version("1.10")
