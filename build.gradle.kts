@@ -1,7 +1,4 @@
-import org.ajoberstar.grgit.Grgit
-
 plugins {
-    id("org.ajoberstar.grgit") version "5.3.3"
     alias(libs.plugins.versions)
     alias(libs.plugins.maven.publish.base) apply false
 }
@@ -75,24 +72,39 @@ subprojects {
     }
 }
 
-@SuppressWarnings("GrMethodMayBeStatic")
 fun versionFromGit(): Pair<String, Boolean> {
+    val envTag = System.getenv("VERSION") ?: System.getenv("GIT_TAG") ?: System.getenv("RELEASE_TAG")
+    if (envTag != null && envTag.isNotEmpty()) return envTag to true
+
     return try {
-        Grgit.open(mapOf("currentDir" to project.rootDir)).use { git ->
-            val headTag = git.tag
-                .list()
-                .find { it.commit.id == git.head().id }
+        val tagProcess = ProcessBuilder("git", "describe", "--tags", "--exact-match")
+            .directory(project.rootDir)
+            .redirectErrorStream(true)
+            .start()
+        val tag = tagProcess.inputStream.bufferedReader().readText().trim()
+        val tagExit = tagProcess.waitFor()
 
-            val clean = git.status().isClean || System.getenv("CI") != null
-            if (!clean) {
-                logger.lifecycle("Git state is dirty, version is a snapshot.")
-            }
+        val statusProcess = ProcessBuilder("git", "status", "--porcelain")
+            .directory(project.rootDir)
+            .redirectErrorStream(true)
+            .start()
+        val status = statusProcess.inputStream.bufferedReader().readText().trim()
+        statusProcess.waitFor()
+        val clean = status.isEmpty() || System.getenv("CI") != null
 
-            if (headTag != null && clean) headTag.name to true else "${git.head().id}-SNAPSHOT" to false
+        if (tagExit == 0 && tag.isNotEmpty() && clean) {
+            tag to true
+        } else {
+            val revProcess = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+                .directory(project.rootDir)
+                .redirectErrorStream(true)
+                .start()
+            val rev = revProcess.inputStream.bufferedReader().readText().trim()
+            revProcess.waitFor()
+            "${rev.ifEmpty { "unknown" }}-SNAPSHOT" to false
         }
     } catch (e: Exception) {
         logger.warn("Failed to get version from git: ${e.message}")
-        val fallback = System.getenv("GIT_TAG") ?: System.getenv("VERSION") ?: System.getenv("RELEASE_TAG") ?: "v1.18.2_29"
-        fallback to true
+        "v1.18.2_30" to true
     }
 }

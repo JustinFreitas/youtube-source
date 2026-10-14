@@ -3,13 +3,6 @@ pluginManagement {
         gradlePluginPortal()
         mavenCentral()
     }
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.id == "org.ajoberstar.grgit") {
-                useModule("org.ajoberstar.grgit:grgit-gradle:5.3.3")
-            }
-        }
-    }
 }
 
 rootProject.name = "youtube-source"

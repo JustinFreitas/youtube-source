@@ -2,7 +2,6 @@ jdk:
   - openjdk21
 before_install:
   - git config --global --add safe.directory '*' || true
-  - chmod -R a+rwx .
   - sdk install java 25.0.2-open || true
   - sdk use java 25.0.2-open || true
 install:
