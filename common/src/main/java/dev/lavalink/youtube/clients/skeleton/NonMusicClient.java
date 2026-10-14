@@ -225,6 +225,29 @@ public abstract class NonMusicClient implements Client {
         return null;
     }
 
+    @Nullable
+    protected JsonBrowser fetchOEmbed(@NotNull HttpInterface httpInterface, @NotNull String videoId) {
+        String url = "https://www.youtube.com/oembed?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3D" + videoId + "&format=json";
+
+        try {
+            HttpGet request = new HttpGet(url);
+
+            try (ClassicHttpResponse response = httpInterface.execute(request)) {
+                int statusCode = response.getCode();
+
+                if (statusCode != 200) {
+                    log.debug("oEmbed returned status {} for videoId {}", statusCode, videoId);
+                    return null;
+                }
+
+                return JsonBrowser.parse(EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8));
+            }
+        } catch (IOException | org.apache.hc.core5.http.ParseException e) {
+            log.debug("oEmbed request failed for videoId {}", videoId, e);
+            return null;
+        }
+    }
+
     @NotNull
     protected JsonBrowser loadSearchResults(@NotNull HttpInterface httpInterface,
                                             @NotNull String searchQuery) {
@@ -484,6 +507,38 @@ public abstract class NonMusicClient implements Client {
         this.playlistPageCount = playlistPageCount;
     }
 
+    @Nullable
+    protected static String extractTitle(@NotNull JsonBrowser json) {
+        JsonBrowser titleNode = json.get("videoDetails").get("title");
+        String title = DataFormatTools.defaultOnNull(
+            titleNode.text(),
+            DataFormatTools.defaultOnNull(
+                titleNode.get("simpleText").text(),
+                titleNode.get("runs").index(0).get("text").text()
+            )
+        );
+
+        if (title == null) {
+            title = json.get("microformat").get("playerMicroformatRenderer").get("title").get("simpleText").text();
+        }
+        if (title == null) {
+            title = json.get("microformat").get("microformatDataRenderer").get("title").text();
+        }
+        return title;
+    }
+
+    @Nullable
+    protected static String extractAuthor(@NotNull JsonBrowser json) {
+        String author = json.get("videoDetails").get("author").text();
+        if (author == null) {
+            author = json.get("microformat").get("playerMicroformatRenderer").get("ownerChannelName").text();
+        }
+        if (author == null) {
+            author = json.get("microformat").get("microformatDataRenderer").get("pageOwnerDetails").get("name").text();
+        }
+        return author;
+    }
+
     @Override
     public AudioItem loadVideo(@NotNull YoutubeAudioSourceManager source,
                                @NotNull HttpInterface httpInterface,
@@ -496,11 +551,25 @@ public abstract class NonMusicClient implements Client {
         JsonBrowser playabilityStatus = json.get("playabilityStatus");
         JsonBrowser videoDetails = json.get("videoDetails");
 
-        String title = videoDetails.get("title").text();
-        String author = videoDetails.get("author").text();
+        String title = extractTitle(json);
+        String author = extractAuthor(json);
 
+        if (title == null || author == null) {
+            JsonBrowser oEmbed = fetchOEmbed(httpInterface, videoId);
+            if (oEmbed != null) {
+                if (title == null) title = oEmbed.get("title").text();
+                if (author == null) author = oEmbed.get("author_name").text();
+            }
+        }
+
+        if (title == null) {
+            log.warn("Could not extract title for client {}, videoId {}. microformat: {}",
+                getIdentifier(), videoId, json.get("microformat").format());
+            title = "Unknown title";
+        }
         if (author == null) {
-            log.debug("Author field is null, client: {}, json: {}", getIdentifier(), json.format());
+            log.warn("Could not extract author for client {}, videoId {}. microformat: {}",
+                getIdentifier(), videoId, json.get("microformat").format());
             author = "Unknown artist";
         }
 

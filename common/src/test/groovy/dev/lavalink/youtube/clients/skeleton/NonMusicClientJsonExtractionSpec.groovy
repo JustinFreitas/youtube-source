@@ -330,4 +330,51 @@ class NonMusicClientJsonExtractionSpec extends Specification {
         tracks[0].info.identifier == "aaaaaaaaaaa"
         tracks[0].info.title == "Result One"
     }
+
+    def "extractPlaylistTracks extracts tracks from modern lockupViewModel layout"() {
+        given:
+        def json = JsonBrowser.parse('''
+            {"contents": [
+                {"lockupViewModel": {
+                    "contentId": "xyz12345678",
+                    "metadata": {
+                        "lockupMetadataViewModel": {
+                            "title": {"content": "Lockup Title"},
+                            "metadataRows": [
+                                {"metadataParts": [{"text": {"content": "Lockup Artist"}}]}
+                            ]
+                        }
+                    },
+                    "contentImage": {
+                        "thumbnailViewModel": {
+                            "overlays": [
+                                {"thumbnailOverlayTimeStatusRenderer": {"text": {"simpleText": "4:20"}}}
+                            ]
+                        }
+                    }
+                }}
+            ]}
+        ''')
+        def tracks = []
+
+        when:
+        client.extractPlaylistTracks(json, tracks, source)
+
+        then:
+        tracks.size() == 1
+        tracks[0].info.identifier == "xyz12345678"
+        tracks[0].info.title == "Lockup Title"
+        tracks[0].info.author == "Lockup Artist"
+        tracks[0].info.length == 260000L
+    }
+
+    def "extractPlaylistName falls back to pageHeaderRenderer when playlistHeaderRenderer is absent"() {
+        given:
+        def json = JsonBrowser.parse('''
+            {"header": {"pageHeaderRenderer": {"pageTitle": "Modern Header Playlist"}}}
+        ''')
+
+        expect:
+        client.extractPlaylistName(json) == "Modern Header Playlist"
+    }
 }

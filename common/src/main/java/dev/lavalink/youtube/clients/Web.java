@@ -184,7 +184,8 @@ public class Web extends StreamingNonMusicClient {
 
     @Override
     protected String extractPlaylistName(@NotNull JsonBrowser json) {
-        return json.get("metadata").get("playlistMetadataRenderer").get("title").text();
+        String title = json.get("metadata").get("playlistMetadataRenderer").get("title").text();
+        return title != null ? title : super.extractPlaylistName(json);
     }
 
     @NotNull

@@ -91,7 +91,17 @@ public class YoutubeMpegStreamAudioTrack extends MpegAudioTrack {
     }
 
     private void updateGlobalSequence() {
-        try (YoutubePersistentHttpStream stream = new YoutubePersistentHttpStream(httpInterface, state.initialUrl, CONTENT_LENGTH_UNKNOWN)) {
+        URI urlToFetch = state.initialUrl;
+
+        if (trackInfo.isStream && !state.initialUrl.toString().contains("rn=")) {
+            try {
+                urlToFetch = new URIBuilder(state.initialUrl).setParameter("rn", "0").build();
+            } catch (URISyntaxException e) {
+                return;
+            }
+        }
+
+        try (YoutubePersistentHttpStream stream = new YoutubePersistentHttpStream(httpInterface, urlToFetch, CONTENT_LENGTH_UNKNOWN)) {
             MpegFileLoader file = new MpegFileLoader(stream);
             file.parseHeaders();
 
@@ -109,6 +119,10 @@ public class YoutubeMpegStreamAudioTrack extends MpegAudioTrack {
     private void execute(LocalAudioTrackExecutor localExecutor) throws InterruptedException {
         if (!trackInfo.isStream && state.absoluteSequence == null) {
             state.absoluteSequence = 0L;
+        }
+
+        if (trackInfo.isStream) {
+            log.info("Starting livestream playback: {} / {}", trackInfo.title, trackInfo.author);
         }
 
         try {
@@ -167,8 +181,6 @@ public class YoutubeMpegStreamAudioTrack extends MpegAudioTrack {
         LocalAudioTrackExecutor localExecutor
     ) throws InterruptedException {
         URI segmentUrl = getNextSegmentUrl(state);
-
-        log.debug("Segment URL: {}", segmentUrl.toString());
 
         try (YoutubePersistentHttpStream stream = new YoutubePersistentHttpStream(httpInterface, segmentUrl, CONTENT_LENGTH_UNKNOWN)) {
             if (stream.checkStatusCode() == HttpStatus.SC_NO_CONTENT || stream.getContentLength() == 0) {

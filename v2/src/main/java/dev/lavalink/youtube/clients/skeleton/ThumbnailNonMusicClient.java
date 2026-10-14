@@ -152,11 +152,25 @@ public abstract class ThumbnailNonMusicClient extends NonMusicClient {
         JsonBrowser playabilityStatus = json.get("playabilityStatus");
         JsonBrowser videoDetails = json.get("videoDetails");
 
-        String title = videoDetails.get("title").text();
-        String author = videoDetails.get("author").text();
+        String title = extractTitle(json);
+        String author = extractAuthor(json);
 
+        if (title == null || author == null) {
+            JsonBrowser oEmbed = fetchOEmbed(httpInterface, videoId);
+            if (oEmbed != null) {
+                if (title == null) title = oEmbed.get("title").text();
+                if (author == null) author = oEmbed.get("author_name").text();
+            }
+        }
+
+        if (title == null) {
+            log.warn("Could not extract title for client {}, videoId {}. microformat: {}",
+                getIdentifier(), videoId, json.get("microformat").format());
+            title = "Unknown title";
+        }
         if (author == null) {
-            log.debug("Author field is null, client: {}, json: {}", getIdentifier(), json.format());
+            log.warn("Could not extract author for client {}, videoId {}. microformat: {}",
+                getIdentifier(), videoId, json.get("microformat").format());
             author = "Unknown artist";
         }
 
