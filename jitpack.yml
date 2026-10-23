@@ -1,6 +1,7 @@
 jdk:
   - openjdk21
 before_install:
+  - rm -f ~/.m2/settings.xml || true
   - git config --global --add safe.directory '*' || true
   - sdk install java 25.0.2-open || true
   - sdk use java 25.0.2-open || true
