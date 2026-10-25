@@ -42,8 +42,8 @@ dependencyResolutionManagement {
             library("groovy", "org.apache.groovy", "groovy").version("5.1.3")
             library("spock-core", "org.spockframework", "spock-core").version("2.4-groovy-5.0")
             library("logback-classic", "ch.qos.logback", "logback-classic").version("1.6.5")
-            library("byte-buddy", "net.bytebuddy", "byte-buddy").version("1.18.15")
-            library("byte-buddy-agent", "net.bytebuddy", "byte-buddy-agent").version("1.18.15")
+            library("byte-buddy", "net.bytebuddy", "byte-buddy").version("1.18.16")
+            library("byte-buddy-agent", "net.bytebuddy", "byte-buddy-agent").version("1.18.16")
             library("objenesis", "org.objenesis", "objenesis").version("3.6")
             library("junit-platform-launcher", "org.junit.platform", "junit-platform-launcher").version("6.1.3")
 
