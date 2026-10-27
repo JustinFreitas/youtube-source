@@ -34,7 +34,7 @@ dependencyResolutionManagement {
             library("httpclient5", "org.apache.httpcomponents.client5", "httpclient5").version("5.6.5")
             library("httpcore5", "org.apache.httpcomponents.core5", "httpcore5").version("5.4.4")
 
-            library("rhino-engine", "org.mozilla", "rhino-engine").version("1.9.1")
+            library("rhino-engine", "org.mozilla", "rhino-engine").version("1.9.2")
             library("nanojson", "com.grack", "nanojson").version("1.10")
             library("slf4j", "org.slf4j", "slf4j-api").version("2.0.20")
             library("annotations", "org.jetbrains", "annotations").version("26.1.0")
