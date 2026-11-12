@@ -21,7 +21,9 @@ public class BaseYoutubeHttpContextFilter implements HttpContextFilter {
                         ClassicHttpRequest request,
                         boolean isRepetition) {
     // Consent cookie, so we do not land on consent page for HTML requests
-    request.addHeader("Cookie", "CONSENT=YES+cb.20210328-17-p0.en+FX+471");
+    if (!isRepetition) {
+      request.addHeader("Cookie", "CONSENT=YES+cb.20210328-17-p0.en+FX+471");
+    }
   }
 
   @Override

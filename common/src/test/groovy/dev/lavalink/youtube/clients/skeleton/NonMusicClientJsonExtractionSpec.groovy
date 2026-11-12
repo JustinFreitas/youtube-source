@@ -377,4 +377,73 @@ class NonMusicClientJsonExtractionSpec extends Specification {
         expect:
         client.extractPlaylistName(json) == "Modern Header Playlist"
     }
+
+    def "AndroidVr does not declare a shadowed options field and falls back to super.extractPlaylistName"() {
+        given:
+        def customOptions = new dev.lavalink.youtube.clients.ClientOptions()
+        customOptions.setSearching(false)
+        def vr = new dev.lavalink.youtube.clients.AndroidVr(customOptions)
+        def metadataJson = JsonBrowser.parse('{"metadata":{"playlistMetadataRenderer":{"title":"Metadata Fallback Title"}}}')
+        def modernHeaderJson = JsonBrowser.parse('{"header":{"pageHeaderRenderer":{"pageTitle":"PageHeader Fallback Title"}}}')
+
+        expect:
+        dev.lavalink.youtube.clients.AndroidVr.getDeclaredFields().every { it.name != "options" }
+        vr.getOptions().is(customOptions)
+        !vr.getOptions().getSearching()
+        vr.extractPlaylistName(metadataJson) == "Metadata Fallback Title"
+        vr.extractPlaylistName(modernHeaderJson) == "PageHeader Fallback Title"
+    }
+
+    def "Ios, MWeb, and Android fall back to super.extractPlaylistName when primary path is absent"() {
+        given:
+        def ios = new dev.lavalink.youtube.clients.Ios()
+        def mweb = new dev.lavalink.youtube.clients.MWeb()
+        def android = new dev.lavalink.youtube.clients.Android(dev.lavalink.youtube.clients.ClientOptions.DEFAULT, false)
+        def metadataJson = JsonBrowser.parse('{"metadata":{"playlistMetadataRenderer":{"title":"Fallback Playlist"}}}')
+        def headerRunsJson = JsonBrowser.parse('{"header":{"playlistHeaderRenderer":{"title":{"runs":[{"text":"Runs Header Playlist"}]}}}}')
+
+        expect:
+        ios.extractPlaylistName(metadataJson) == "Fallback Playlist"
+        ios.extractPlaylistName(headerRunsJson) == "Runs Header Playlist"
+        mweb.extractPlaylistName(metadataJson) == "Fallback Playlist"
+        mweb.extractPlaylistName(headerRunsJson) == "Runs Header Playlist"
+        android.extractPlaylistName(metadataJson) == "Fallback Playlist"
+        android.extractPlaylistName(headerRunsJson) == "Runs Header Playlist"
+    }
+
+    def "Ios and MWeb extractPlaylistVideoList support lockupViewModel items and fallback layouts"() {
+        given:
+        def ios = new dev.lavalink.youtube.clients.Ios()
+        def mweb = new dev.lavalink.youtube.clients.MWeb()
+        def lockupSingleColumnJson = JsonBrowser.parse('''
+            {"contents":{"singleColumnBrowseResultsRenderer":{"tabs":[
+                {"tabRenderer":{"content":{"sectionListRenderer":{"contents":[
+                    {"itemSectionRenderer":{"contents":[
+                        {"lockupViewModel":{"contentId":"vid12345678","metadata":{"lockupMetadataViewModel":{"title":{"content":"Modern Track"}}}}}
+                    ]}}
+                ]}}}}
+            ]}}}
+        ''')
+        def fallbackDirectListJson = JsonBrowser.parse('''
+            {"contents":{"singleColumnBrowseResultsRenderer":{"tabs":[
+                {"tabRenderer":{"content":{"sectionListRenderer":{"contents":[
+                    {"playlistVideoListRenderer":{"marker":"directList"}}
+                ]}}}}
+            ]}}}
+        ''')
+
+        when:
+        def iosTracks = []
+        ios.extractPlaylistTracks(ios.extractPlaylistVideoList(lockupSingleColumnJson), iosTracks, source)
+        def mwebTracks = []
+        mweb.extractPlaylistTracks(mweb.extractPlaylistVideoList(lockupSingleColumnJson), mwebTracks, source)
+
+        then:
+        iosTracks.size() == 1
+        iosTracks[0].info.identifier == "vid12345678"
+        mwebTracks.size() == 1
+        mwebTracks[0].info.identifier == "vid12345678"
+        ios.extractPlaylistVideoList(fallbackDirectListJson).get("marker").text() == "directList"
+        mweb.extractPlaylistVideoList(fallbackDirectListJson).get("marker").text() == "directList"
+    }
 }

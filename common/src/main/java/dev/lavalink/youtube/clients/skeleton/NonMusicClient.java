@@ -173,6 +173,7 @@ public abstract class NonMusicClient implements Client {
                 // we want to make sure the re-check gets an accurate reason for any playability issues.
                 json = loadTrackInfoFromInnertube(source, httpInterface, videoId, playabilityStatus, true);
                 getPlayabilityStatus(json.get("playabilityStatus"), true);
+                videoDetails = json.get("videoDetails");
             }
         }
 
@@ -365,7 +366,7 @@ public abstract class NonMusicClient implements Client {
 
     @NotNull
     protected JsonBrowser extractPlaylistVideoList(@NotNull JsonBrowser json) {
-        return json.get("contents")
+        JsonBrowser sectionEntry = json.get("contents")
             .get("singleColumnBrowseResultsRenderer")
             .get("tabs")
             .index(0)
@@ -373,8 +374,24 @@ public abstract class NonMusicClient implements Client {
             .get("content")
             .get("sectionListRenderer")
             .get("contents")
-            .index(0)
-            .get("playlistVideoListRenderer");
+            .index(0);
+
+        JsonBrowser playlistVideoList = sectionEntry.get("playlistVideoListRenderer");
+        if (!playlistVideoList.isNull()) {
+            return playlistVideoList;
+        }
+
+        JsonBrowser itemSectionContents = sectionEntry.get("itemSectionRenderer").get("contents");
+        JsonBrowser nestedVideoList = itemSectionContents.index(0).get("playlistVideoListRenderer");
+        if (!nestedVideoList.isNull()) {
+            return nestedVideoList;
+        }
+
+        if (!itemSectionContents.isNull()) {
+            return itemSectionContents;
+        }
+
+        return playlistVideoList;
     }
 
     @Nullable

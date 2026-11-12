@@ -48,7 +48,7 @@ class SignatureCipherSpec extends Specification {
 
         then: "caching key is set on the engine binding context"
         res1 == "test1"
-        engine.get("loaded_cipher_id") == cipher.hashCode()
+        engine.get("loaded_cipher_id") == cipher.id
 
         when: "second execution"
         // If it re-evaluated, 'count' would be re-declared or reset to 0 (depending on JS semantics,
@@ -70,8 +70,9 @@ class SignatureCipherSpec extends Specification {
         )
         def res3 = anotherCipher.apply("test", engine)
 
-        then: "it detects hash change, re-evaluates the new cipher script and updates the engine cache id"
+        then: "it detects id change, re-evaluates the new cipher script and updates the engine cache id"
         res3 == "test11"
-        engine.get("loaded_cipher_id") == anotherCipher.hashCode()
+        cipher.id != anotherCipher.id
+        engine.get("loaded_cipher_id") == anotherCipher.id
     }
 }

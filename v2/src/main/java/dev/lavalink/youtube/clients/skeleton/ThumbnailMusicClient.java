@@ -52,6 +52,10 @@ public abstract class ThumbnailMusicClient extends MusicClient {
                 .get("runs")
                 .values();
 
+            if (runs.isEmpty()) {
+                continue;
+            }
+
             String author = runs.get(0).get("text").text();
 
             if (author == null) {

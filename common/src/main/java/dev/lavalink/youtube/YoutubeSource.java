@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 public class YoutubeSource {
     private static final Logger log = LoggerFactory.getLogger(YoutubeSource.class);
@@ -16,12 +17,9 @@ public class YoutubeSource {
     static {
         try (InputStream versionStream = YoutubeSource.class.getResourceAsStream("/yts-version.txt")) {
             if (versionStream != null) {
-                byte[] content = new byte[versionStream.available()];
-                versionStream.read(content);
+                String versionS = new String(versionStream.readAllBytes(), StandardCharsets.UTF_8).trim();
 
-                String versionS = new String(content);
-
-                if (!versionS.startsWith("@")) {
+                if (!versionS.isEmpty() && !versionS.startsWith("@")) {
                     VERSION = versionS;
                 }
             }

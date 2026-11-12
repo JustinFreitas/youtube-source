@@ -275,4 +275,89 @@ class YoutubeAudioSourceManagerRouterSpec extends Specification {
         then:
         thrown(com.sedmelluq.discord.lavaplayer.tools.FriendlyException)
     }
+
+    def "watch URL with an empty or blank list parameter routes to loadVideo instead of loadPlaylist"() {
+        given:
+        def source = manager()
+        def client = Mock(Client)
+
+        when:
+        def router = source.getRouter(httpInterface, "https://www.youtube.com/watch?v=${VIDEO_ID}&list=")
+        router.route(client)
+
+        then:
+        1 * client.loadVideo(source, httpInterface, VIDEO_ID)
+        0 * client.loadPlaylist(*_)
+    }
+
+    def "playlist URL with an empty list parameter is unhandled"() {
+        given:
+        def source = manager()
+
+        expect:
+        source.getRouter(httpInterface, "https://www.youtube.com/playlist?list=") == null
+    }
+
+    def "loadItemOnce continues to fallback client when earlier client returns NO_TRACK on search"() {
+        given:
+        def client1 = Mock(Client) {
+            canHandleRequest(_) >> true
+            supportsOAuth() >> false
+            getIdentifier() >> "CLIENT_1"
+        }
+        def expectedTrack = Mock(com.sedmelluq.discord.lavaplayer.track.AudioTrack)
+        def expectedPlaylist = new com.sedmelluq.discord.lavaplayer.track.BasicAudioPlaylist("Search results", [expectedTrack], null, true)
+        def client2 = Mock(Client) {
+            canHandleRequest(_) >> true
+            supportsOAuth() >> false
+            getIdentifier() >> "CLIENT_2"
+        }
+        def source = new YoutubeAudioSourceManager(true, true, true, client1, client2)
+
+        when:
+        def result = source.loadItemOnce(new AudioReference("ytsearch:rare song", null))
+
+        then:
+        1 * client1.loadSearch(source, _, "rare song") >> AudioReference.NO_TRACK
+        1 * client2.loadSearch(source, _, "rare song") >> expectedPlaylist
+        result.is(expectedPlaylist)
+    }
+
+    def "loadItemOnce returns NO_TRACK when all search clients return NO_TRACK"() {
+        given:
+        def client1 = Mock(Client) {
+            canHandleRequest(_) >> true
+            supportsOAuth() >> false
+            getIdentifier() >> "CLIENT_1"
+        }
+        def client2 = Mock(Client) {
+            canHandleRequest(_) >> true
+            supportsOAuth() >> false
+            getIdentifier() >> "CLIENT_2"
+        }
+        def source = new YoutubeAudioSourceManager(true, true, true, client1, client2)
+
+        when:
+        def result = source.loadItemOnce(new AudioReference("ytsearch:nonexistent", null))
+
+        then:
+        1 * client1.loadSearch(source, _, "nonexistent") >> AudioReference.NO_TRACK
+        1 * client2.loadSearch(source, _, "nonexistent") >> AudioReference.NO_TRACK
+        result == AudioReference.NO_TRACK
+    }
+
+    def "decodeTrack delegates to buildAudioTrack"() {
+        given:
+        def customTrack = Mock(dev.lavalink.youtube.track.YoutubeAudioTrack)
+        def source = new YoutubeAudioSourceManager() {
+            @Override
+            dev.lavalink.youtube.track.YoutubeAudioTrack buildAudioTrack(com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo trackInfo) {
+                return customTrack
+            }
+        }
+        def info = new com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo("Title", "Author", 1000L, VIDEO_ID, false, "https://www.youtube.com/watch?v=${VIDEO_ID}")
+
+        expect:
+        source.decodeTrack(info, Mock(java.io.DataInput)).is(customTrack)
+    }
 }

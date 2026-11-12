@@ -117,6 +117,8 @@ public class RemoteCipherManager implements CipherManager {
                     throw new IOException("Remote cipher service did not return a valid sts timestamp.");
                 }
                 return sts;
+            } finally {
+                httpInterface.getContext().removeAttribute(YoutubeHttpContextFilter.ATTRIBUTE_CIPHER_REQUEST_SPECIFIED);
             }
         }
     }
@@ -169,6 +171,8 @@ public class RemoteCipherManager implements CipherManager {
             return new URI(resolvedUrl);
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
+        } finally {
+            httpInterface.getContext().removeAttribute(YoutubeHttpContextFilter.ATTRIBUTE_CIPHER_REQUEST_SPECIFIED);
         }
     }
 

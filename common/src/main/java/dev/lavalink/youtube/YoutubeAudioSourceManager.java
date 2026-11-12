@@ -246,15 +246,20 @@ public class YoutubeAudioSourceManager implements AudioSourceManager {
                 httpInterface.getContext().setAttribute(Client.OAUTH_CLIENT_ATTRIBUTE, client.supportsOAuth());
 
                 try {
-                    item = router.route(client);
+                    AudioItem result = router.route(client);
+                    if (result != null) {
+                        item = result;
+                    }
                 } catch (CannotBeLoaded cbl) {
                     throw ExceptionTools.wrapUnfriendlyExceptions("This video cannot be loaded.", Severity.SUSPICIOUS, cbl.getCause());
                 } catch (Throwable t) {
                     log.debug("Client \"{}\" threw a non-fatal exception, storing and proceeding...", client.getIdentifier(), t);
                     exceptions.add(new ClientException(t.getMessage(), client, t));
+                } finally {
+                    httpInterface.getContext().removeAttribute(Client.OAUTH_CLIENT_ATTRIBUTE);
                 }
 
-                if (item != null) {
+                if (item != null && item != AudioReference.NO_TRACK) {
                     break;
                 }
             }
@@ -310,7 +315,7 @@ public class YoutubeAudioSourceManager implements AudioSourceManager {
                 } else if ("/playlist".equals(urlInfo.path)) {
                     String playlistId = urlInfo.parameters.get("list");
 
-                    if (playlistId != null) {
+                    if (playlistId != null && !playlistId.isBlank()) {
                         if (playlistId.startsWith("RD")) { // mix handling
                             String videoId = playlistId.substring(2);
                             return (client) -> client.loadMix(this, httpInterface, playlistId, videoId);
@@ -374,14 +379,16 @@ public class YoutubeAudioSourceManager implements AudioSourceManager {
         } else if (urlInfo != null && urlInfo.parameters.containsKey("list")) {
             String playlistId = urlInfo.parameters.get("list");
 
-            if (playlistId.startsWith("RD")) {
-                return (client) -> client.loadMix(this, httpInterface, playlistId, trimmedId);
-            }
+            if (playlistId != null && !playlistId.isBlank()) {
+                if (playlistId.startsWith("RD")) {
+                    return (client) -> client.loadMix(this, httpInterface, playlistId, trimmedId);
+                }
 
-            if (!playlistId.startsWith("LL") && // Liked videos (requires logged-in user)
-                !playlistId.startsWith("WL") && // Watch later (requires logged-in user)
-                !playlistId.startsWith("LM")) { // Liked music (requires logged-in user)
-                return (client) -> client.loadPlaylist(this, httpInterface, playlistId, trimmedId);
+                if (!playlistId.startsWith("LL") && // Liked videos (requires logged-in user)
+                    !playlistId.startsWith("WL") && // Watch later (requires logged-in user)
+                    !playlistId.startsWith("LM")) { // Liked music (requires logged-in user)
+                    return (client) -> client.loadPlaylist(this, httpInterface, playlistId, trimmedId);
+                }
             }
         }
 
@@ -469,7 +476,7 @@ public class YoutubeAudioSourceManager implements AudioSourceManager {
     @Override
     @NotNull
     public AudioTrack decodeTrack(@NotNull AudioTrackInfo trackInfo, @NotNull DataInput input) {
-        return new YoutubeAudioTrack(trackInfo, this);
+        return buildAudioTrack(trackInfo);
     }
 
     @Override

@@ -65,9 +65,9 @@ public class Android extends StreamingNonMusicClient {
     }
 
     @Override
-    @NotNull
+    @Nullable
     protected String extractPlaylistName(@NotNull JsonBrowser json) {
-        return json.get("header")
+        String title = json.get("header")
                 .get("pageHeaderRenderer")
                 .get("content")
                 .get("elementRenderer")
@@ -83,6 +83,7 @@ public class Android extends StreamingNonMusicClient {
                 .get("text")
                 .get("content")
                 .text();
+        return title != null ? title : super.extractPlaylistName(json);
     }
 
     @Override

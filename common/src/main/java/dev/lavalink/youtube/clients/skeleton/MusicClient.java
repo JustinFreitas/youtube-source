@@ -41,7 +41,7 @@ public abstract class MusicClient implements Client {
 
         HttpPost request = new HttpPost(MUSIC_SEARCH_URL);
         request.setEntity(new StringEntity(config.toJsonString(), StandardCharsets.UTF_8));
-        request.setHeader("Referer", "music.youtube.com");
+        request.setHeader("Referer", "https://music.youtube.com");
 
         try (ClassicHttpResponse response = httpInterface.execute(request)) {
             HttpClientTools.assertSuccessWithContent(response, "search music response");
@@ -99,6 +99,10 @@ public abstract class MusicClient implements Client {
                 .get("text")
                 .get("runs")
                 .values();
+
+            if (runs.isEmpty()) {
+                continue;
+            }
 
             String author = runs.get(0).get("text").text();
 

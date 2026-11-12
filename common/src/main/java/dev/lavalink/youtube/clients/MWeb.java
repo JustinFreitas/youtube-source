@@ -9,8 +9,10 @@ import com.sedmelluq.discord.lavaplayer.track.BasicAudioPlaylist;
 import dev.lavalink.youtube.OptionDisabledException;
 import dev.lavalink.youtube.YoutubeAudioSourceManager;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -20,12 +22,36 @@ public class MWeb extends Web {
         .withClientField("clientVersion", "2.20240726.11.00");
 //        .withUserAgent("Mozilla/5.0 (iPad; CPU OS 16_7_10 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1,gzip(gfe)");
 
+    public static volatile String poToken;
+
     public MWeb() {
         super();
     }
 
     public MWeb(@NotNull ClientOptions options) {
         super(options);
+    }
+
+    public static void setPoTokenAndVisitorData(String poToken, String visitorData) {
+        MWeb.poToken = poToken;
+
+        synchronized (BASE_CONFIG) {
+            if (poToken == null || visitorData == null) {
+                BASE_CONFIG.getRoot().remove("serviceIntegrityDimensions");
+                BASE_CONFIG.withVisitorData(null);
+                return;
+            }
+
+            Map<String, Object> sid = BASE_CONFIG.putOnceAndJoin(BASE_CONFIG.getRoot(), "serviceIntegrityDimensions");
+            sid.put("poToken", poToken);
+            BASE_CONFIG.withVisitorData(visitorData);
+        }
+    }
+
+    @Override
+    @Nullable
+    protected String getPoToken() {
+        return MWeb.poToken;
     }
 
     @Override
@@ -59,17 +85,19 @@ public class MWeb extends Web {
     }
 
     @Override
+    @Nullable
     protected String extractPlaylistName(@NotNull JsonBrowser json) {
-        return json.get("header")
+        String title = json.get("header")
             .get("pageHeaderRenderer")
             .get("pageTitle")
             .text();
+        return title != null ? title : super.extractPlaylistName(json);
     }
 
     @Override
     @NotNull
     protected JsonBrowser extractPlaylistVideoList(@NotNull JsonBrowser json) {
-        return json.get("contents")
+        JsonBrowser sectionEntry = json.get("contents")
             .get("singleColumnBrowseResultsRenderer")
             .get("tabs")
             .index(0)
@@ -77,11 +105,24 @@ public class MWeb extends Web {
             .get("content")
             .get("sectionListRenderer")
             .get("contents")
-            .index(0)
-            .get("itemSectionRenderer")
-            .get("contents")
-            .index(0)
-            .get("playlistVideoListRenderer");
+            .index(0);
+
+        JsonBrowser contents = sectionEntry.get("itemSectionRenderer").get("contents");
+        JsonBrowser playlistVideoList = contents.index(0).get("playlistVideoListRenderer");
+        if (!playlistVideoList.isNull()) {
+            return playlistVideoList;
+        }
+
+        if (!contents.isNull()) {
+            return contents;
+        }
+
+        JsonBrowser directVideoList = sectionEntry.get("playlistVideoListRenderer");
+        if (!directVideoList.isNull()) {
+            return directVideoList;
+        }
+
+        return super.extractPlaylistVideoList(json);
     }
 
     @Override

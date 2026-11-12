@@ -29,4 +29,13 @@ class FormatInfoSpec extends Specification {
         expect:
         FormatInfo.get(ContentType.parse("application/octet-stream")) == null
     }
+
+    @Unroll
+    def "get returns null instead of throwing NPE when codecs parameter is absent on #contentType"() {
+        expect:
+        FormatInfo.get(ContentType.parse(contentType)) == null
+
+        where:
+        contentType << ["audio/webm", "audio/mp4", "video/webm", "video/mp4"]
+    }
 }

@@ -27,11 +27,11 @@ dependencies {
     testImplementation(libs.lavaplayer.v2)
     testImplementation(libs.httpclient5)
     testImplementation(libs.httpcore5)
-    testImplementation("org.apache.logging.log4j:log4j-core:2.26.1")
-    testImplementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.26.1")
+    testImplementation(libs.log4j.core)
+    testImplementation(libs.log4j.slf4j2.impl)
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.3")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.3")
+    testImplementation(libs.junit.jupiter.api)
+    testRuntimeOnly(libs.junit.jupiter.engine)
     testRuntimeOnly(libs.junit.platform.launcher)
 
     // Spock

@@ -6,7 +6,9 @@ import dev.lavalink.youtube.http.YoutubeHttpContextFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("unchecked")
@@ -25,16 +27,19 @@ public class ClientConfig {
         this.name = null;
         this.userAgent = null;
         this.visitorData = null;
+        this.apiKey = null;
         this.root = new HashMap<>();
     }
 
     private ClientConfig(@NotNull Map<String, Object> context,
-                         @NotNull String userAgent,
-                         @NotNull String visitorData,
-                         @NotNull String name) {
+                         @Nullable String userAgent,
+                         @Nullable String visitorData,
+                         @Nullable String name,
+                         @Nullable String apiKey) {
         this.name = name;
         this.userAgent = userAgent;
         this.visitorData = visitorData;
+        this.apiKey = apiKey;
         this.root = context;
     }
 
@@ -58,22 +63,45 @@ public class ClientConfig {
         return this.root;
     }
 
-    public ClientConfig copy() {
-        return new ClientConfig(new HashMap<>(this.root), this.userAgent, this.visitorData, this.name);
+    public synchronized ClientConfig copy() {
+        return new ClientConfig(deepCopyMap(this.root), this.userAgent, this.visitorData, this.name, this.apiKey);
     }
 
-    public ClientConfig withClientName(@NotNull String name) {
+    private static Map<String, Object> deepCopyMap(@NotNull Map<String, Object> source) {
+        Map<String, Object> copy = new HashMap<>(source.size());
+        for (Map.Entry<String, Object> entry : source.entrySet()) {
+            copy.put(entry.getKey(), deepCopyValue(entry.getValue()));
+        }
+        return copy;
+    }
+
+    private static Object deepCopyValue(@Nullable Object value) {
+        if (value instanceof Map<?, ?>) {
+            return deepCopyMap((Map<String, Object>) value);
+        }
+        if (value instanceof List<?>) {
+            List<?> list = (List<?>) value;
+            List<Object> listCopy = new ArrayList<>(list.size());
+            for (Object element : list) {
+                listCopy.add(deepCopyValue(element));
+            }
+            return listCopy;
+        }
+        return value;
+    }
+
+    public synchronized ClientConfig withClientName(@NotNull String name) {
         this.name = name;
         withClientField("clientName", name);
         return this;
     }
 
-    public ClientConfig withUserAgent(@NotNull String userAgent) {
+    public synchronized ClientConfig withUserAgent(@NotNull String userAgent) {
         this.userAgent = userAgent;
         return this;
     }
 
-    public ClientConfig withVisitorData(@Nullable String visitorData) {
+    public synchronized ClientConfig withVisitorData(@Nullable String visitorData) {
         this.visitorData = visitorData;
 
         if (visitorData != null) {
@@ -101,38 +129,38 @@ public class ClientConfig {
         return this;
     }
 
-    public ClientConfig withApiKey(@NotNull String apiKey) {
+    public synchronized ClientConfig withApiKey(@NotNull String apiKey) {
         this.apiKey = apiKey;
         return this;
     }
 
-    public Map<String, Object> putOnceAndJoin(@NotNull Map<String, Object> on,
-                                              @NotNull String key) {
+    public synchronized Map<String, Object> putOnceAndJoin(@NotNull Map<String, Object> on,
+                                                           @NotNull String key) {
         return (Map<String, Object>) on.computeIfAbsent(key, __ -> new HashMap<String, Object>());
     }
 
-    public ClientConfig withClientDefaultScreenParameters() {
+    public synchronized ClientConfig withClientDefaultScreenParameters() {
         withClientField("screenDensityFloat", 1);
         withClientField("screenHeightPoints", 1080);
         withClientField("screenPixelDensity", 1);
         return withClientField("screenWidthPoints", 1920);
     }
 
-    public ClientConfig withThirdPartyEmbedUrl(@NotNull String embedUrl) {
+    public synchronized ClientConfig withThirdPartyEmbedUrl(@NotNull String embedUrl) {
         Map<String, Object> context = putOnceAndJoin(root, "context");
         Map<String, Object> thirdParty = putOnceAndJoin(context, "thirdParty");
         thirdParty.put("embedUrl", embedUrl);
         return this;
     }
 
-    public ClientConfig withPlaybackSignatureTimestamp(@NotNull String signatureTimestamp) {
+    public synchronized ClientConfig withPlaybackSignatureTimestamp(@NotNull String signatureTimestamp) {
         Map<String, Object> playbackContext = putOnceAndJoin(root, "playbackContext");
         Map<String, Object> contentPlaybackContext = putOnceAndJoin(playbackContext, "contentPlaybackContext");
         contentPlaybackContext.put("signatureTimestamp", signatureTimestamp);
         return this;
     }
 
-    public ClientConfig withEncryptedHostFlags(@Nullable String encryptedHostFlags) {
+    public synchronized ClientConfig withEncryptedHostFlags(@Nullable String encryptedHostFlags) {
         if (encryptedHostFlags != null) {
             Map<String, Object> playbackContext = putOnceAndJoin(root, "playbackContext");
             Map<String, Object> contentPlaybackContext = putOnceAndJoin(playbackContext, "contentPlaybackContext");
@@ -141,29 +169,29 @@ public class ClientConfig {
         return this;
     }
 
-    public ClientConfig withRootField(@NotNull String key,
-                                      @Nullable Object value) {
+    public synchronized ClientConfig withRootField(@NotNull String key,
+                                                   @Nullable Object value) {
         root.put(key, value);
         return this;
     }
 
-    public ClientConfig withClientField(@NotNull String key,
-                                        @Nullable Object value) {
+    public synchronized ClientConfig withClientField(@NotNull String key,
+                                                     @Nullable Object value) {
         Map<String, Object> context = putOnceAndJoin(root, "context");
         Map<String, Object> client = putOnceAndJoin(context, "client");
         client.put(key, value);
         return this;
     }
 
-    public ClientConfig withUserField(@NotNull String key,
-                                      @Nullable Object value) {
+    public synchronized ClientConfig withUserField(@NotNull String key,
+                                                   @Nullable Object value) {
         Map<String, Object> context = putOnceAndJoin(root, "context");
         Map<String, Object> user = putOnceAndJoin(context, "user");
         user.put(key, value);
         return this;
     }
 
-    public ClientConfig setAttributes(@NotNull HttpInterface httpInterface) {
+    public synchronized ClientConfig setAttributes(@NotNull HttpInterface httpInterface) {
         if (userAgent != null) {
             httpInterface.getContext().setAttribute(YoutubeHttpContextFilter.ATTRIBUTE_USER_AGENT_SPECIFIED, userAgent);
 
@@ -175,7 +203,7 @@ public class ClientConfig {
         return this;
     }
 
-    public String toJsonString() {
+    public synchronized String toJsonString() {
         return JsonWriter.string().object(root).done();
     }
 

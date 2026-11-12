@@ -40,6 +40,10 @@ public enum FormatInfo {
         String mimeType = contentType.getMimeType();
         String codec = contentType.getParameter("codecs");
 
+        if (codec == null) {
+            return null;
+        }
+
         // Check accurate matches
         for (FormatInfo formatInfo : FormatInfo.values()) {
             if (formatInfo.mimeType.equals(mimeType) && formatInfo.codec.equals(codec)) {

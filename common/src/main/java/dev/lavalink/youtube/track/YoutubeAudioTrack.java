@@ -113,6 +113,8 @@ public class YoutubeAudioTrack extends DelegatedAudioTrack {
             }
           }
           exceptions.add(new ClientException(e.getMessage(), client, e));
+        } finally {
+          httpInterface.getContext().removeAttribute(Client.OAUTH_CLIENT_ATTRIBUTE);
         }
       }
 

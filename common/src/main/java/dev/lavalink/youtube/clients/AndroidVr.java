@@ -4,6 +4,7 @@ import com.sedmelluq.discord.lavaplayer.tools.JsonBrowser;
 import com.sedmelluq.discord.lavaplayer.tools.io.HttpInterface;
 import dev.lavalink.youtube.clients.ClientConfig.AndroidVersion;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class AndroidVr extends Android {
     public static String CLIENT_VERSION = "1.60.19";
@@ -14,8 +15,6 @@ public class AndroidVr extends Android {
         .withClientName("ANDROID_VR")
         .withClientField("clientVersion", CLIENT_VERSION)
         .withClientField("androidSdkVersion", ANDROID_VERSION.getSdkVersion());
-
-    protected ClientOptions options;
 
     public AndroidVr() {
         this(ClientOptions.DEFAULT);
@@ -39,8 +38,9 @@ public class AndroidVr extends Android {
     }
 
     @Override
-    @NotNull
+    @Nullable
     protected String extractPlaylistName(@NotNull JsonBrowser json) {
-        return json.get("header").get("playlistHeaderRenderer").get("title").get("runs").index(0).get("text").text();
+        String title = json.get("header").get("playlistHeaderRenderer").get("title").get("runs").index(0).get("text").text();
+        return title != null ? title : super.extractPlaylistName(json);
     }
 }

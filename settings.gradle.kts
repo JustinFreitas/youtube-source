@@ -41,10 +41,17 @@ dependencyResolutionManagement {
 
             library("groovy", "org.apache.groovy", "groovy").version("5.1.3")
             library("spock-core", "org.spockframework", "spock-core").version("2.4-groovy-5.0")
-            library("logback-classic", "ch.qos.logback", "logback-classic").version("1.6.6")
             library("byte-buddy", "net.bytebuddy", "byte-buddy").version("1.18.17")
             library("byte-buddy-agent", "net.bytebuddy", "byte-buddy-agent").version("1.18.17")
             library("objenesis", "org.objenesis", "objenesis").version("3.6")
+
+            version("log4j", "2.26.1")
+            library("log4j-core", "org.apache.logging.log4j", "log4j-core").versionRef("log4j")
+            library("log4j-slf4j2-impl", "org.apache.logging.log4j", "log4j-slf4j2-impl").versionRef("log4j")
+
+            version("junit-jupiter", "6.1.3")
+            library("junit-jupiter-api", "org.junit.jupiter", "junit-jupiter-api").versionRef("junit-jupiter")
+            library("junit-jupiter-engine", "org.junit.jupiter", "junit-jupiter-engine").versionRef("junit-jupiter")
             library("junit-platform-launcher", "org.junit.platform", "junit-platform-launcher").version("6.1.3")
 
             plugin("lavalink-gradle-plugin", "dev.arbjerg.lavalink.gradle-plugin").version("1.1.2")

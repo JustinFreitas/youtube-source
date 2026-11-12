@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 public class YoutubeAccessTokenTracker {
   private static final Logger log = LoggerFactory.getLogger(YoutubeAccessTokenTracker.class);
 
-  private static final String TOKEN_FETCH_CONTEXT_ATTRIBUTE = "yt-raw";
+  static final String TOKEN_FETCH_CONTEXT_ATTRIBUTE = "yt-raw";
   private static final long VISITOR_ID_REFRESH_INTERVAL = TimeUnit.MINUTES.toMillis(10);
 
   private final Object tokenLock = new Object();
@@ -67,22 +67,26 @@ public class YoutubeAccessTokenTracker {
   }
 
   public boolean isTokenFetchContext(@NotNull HttpClientContext context) {
-    return context.removeAttribute(TOKEN_FETCH_CONTEXT_ATTRIBUTE) == Boolean.TRUE;
+    return Boolean.TRUE.equals(context.getAttribute(TOKEN_FETCH_CONTEXT_ATTRIBUTE, Boolean.class));
   }
 
   private String fetchVisitorId() throws IOException {
     try (HttpInterface httpInterface = httpInterfaceManager.getInterface()) {
       httpInterface.getContext().setAttribute(TOKEN_FETCH_CONTEXT_ATTRIBUTE, true);
 
-      ClientConfig client = Android.BASE_CONFIG.setAttributes(httpInterface);
+      try {
+        ClientConfig client = Android.BASE_CONFIG.copy().setAttributes(httpInterface);
 
-      HttpPost visitorIdPost = new HttpPost("https://youtubei.googleapis.com/youtubei/v1/visitor_id");
-      visitorIdPost.setEntity(new StringEntity(client.toJsonString(), StandardCharsets.UTF_8));
+        HttpPost visitorIdPost = new HttpPost("https://youtubei.googleapis.com/youtubei/v1/visitor_id");
+        visitorIdPost.setEntity(new StringEntity(client.toJsonString(), StandardCharsets.UTF_8));
 
-      try (ClassicHttpResponse response = httpInterface.execute(visitorIdPost)) {
-        HttpClientTools.assertSuccessWithContent(response, "youtube visitor id");
-        JsonBrowser json = JsonBrowser.parse(response.getEntity().getContent());
-        return json.get("responseContext").get("visitorData").text();
+        try (ClassicHttpResponse response = httpInterface.execute(visitorIdPost)) {
+          HttpClientTools.assertSuccessWithContent(response, "youtube visitor id");
+          JsonBrowser json = JsonBrowser.parse(response.getEntity().getContent());
+          return json.get("responseContext").get("visitorData").text();
+        }
+      } finally {
+        httpInterface.getContext().removeAttribute(TOKEN_FETCH_CONTEXT_ATTRIBUTE);
       }
     }
   }

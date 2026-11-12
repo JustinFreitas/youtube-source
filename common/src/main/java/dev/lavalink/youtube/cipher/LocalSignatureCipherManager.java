@@ -131,7 +131,7 @@ public class LocalSignatureCipherManager implements CipherManager {
             try {
                 uri.setParameter(format.getSignatureKey(), cipher.apply(signature, engine));
             } catch (ScriptException | NoSuchMethodException e) {
-                dumpProblematicScript(cipherCache.get(playerScript).rawScript, playerScript, "Can't transform s parameter " + signature);
+                dumpProblematicScript(cipher.rawScript, playerScript, "Can't transform s parameter " + signature);
             }
         }
 
@@ -158,7 +158,7 @@ public class LocalSignatureCipherManager implements CipherManager {
             } catch (ScriptException | NoSuchMethodException e) {
                 // URLs can still be played without a resolved n parameter. It just means they're
                 // throttled. But we shouldn't throw an exception anyway as it's not really fatal.
-                dumpProblematicScript(cipherCache.get(playerScript).rawScript, playerScript, "Can't transform n parameter " + nParameter + " with " + cipher.nFunction + " n function");
+                dumpProblematicScript(cipher.rawScript, playerScript, "Can't transform n parameter " + nParameter + " with " + cipher.nFunction + " n function");
             }
         }
 
@@ -199,23 +199,9 @@ public class LocalSignatureCipherManager implements CipherManager {
 
                 if (cipherKey == null) {
                     log.debug("Parsing player script {}", cipherScriptUrl);
-
-                    try (ClassicHttpResponse response = httpInterface.execute(new HttpGet(CipherUtils.parseTokenScriptUrl(cipherScriptUrl)))) {
-                        int statusCode = response.getCode();
-
-                        if (!HttpClientTools.isSuccessWithContent(statusCode)) {
-                            throw new IOException("Received non-success response code " + statusCode + " from script url " +
-                                cipherScriptUrl + " ( " + CipherUtils.parseTokenScriptUrl(cipherScriptUrl) + " )");
-                        }
-
-                        cipherKey = extractFromScript(dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8), cipherScriptUrl);
-                        
-                        if (cipherCache.size() > 100) {
-                            cipherCache.clear();
-                        }
-
-                        cipherCache.put(cipherScriptUrl, cipherKey);
-                    }
+                    String script = fetchRawScript(httpInterface, cipherScriptUrl);
+                    cipherKey = extractFromScript(script, cipherScriptUrl);
+                    cacheCipher(cipherScriptUrl, cipherKey);
                 }
             }
         }
@@ -223,21 +209,42 @@ public class LocalSignatureCipherManager implements CipherManager {
         return cipherKey;
     }
 
+    private void cacheCipher(@NotNull String cipherScriptUrl, @NotNull SignatureCipher cipherKey) {
+        if (cipherCache.size() > 100) {
+            cipherCache.clear();
+        }
+        cipherCache.put(cipherScriptUrl, cipherKey);
+    }
+
+    private String fetchRawScript(@NotNull HttpInterface httpInterface,
+                                  @NotNull String cipherScriptUrl) throws IOException {
+        try (ClassicHttpResponse response = httpInterface.execute(new HttpGet(CipherUtils.parseTokenScriptUrl(cipherScriptUrl)))) {
+            int statusCode = response.getCode();
+
+            if (!HttpClientTools.isSuccessWithContent(statusCode)) {
+                throw new IOException("Received non-success response code " + statusCode + " from script url " +
+                    cipherScriptUrl + " ( " + CipherUtils.parseTokenScriptUrl(cipherScriptUrl) + " )");
+            }
+
+            return dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8);
+        }
+    }
+
     public String getRawScript(@NotNull HttpInterface httpInterface,
                                @NotNull String cipherScriptUrl) throws IOException {
+        SignatureCipher cached = cipherCache.get(cipherScriptUrl);
+        if (cached != null) {
+            return cached.rawScript;
+        }
+
         synchronized (this) {
-            log.debug("getting raw player script {}", cipherScriptUrl);
-
-            try (ClassicHttpResponse response = httpInterface.execute(new HttpGet(CipherUtils.parseTokenScriptUrl(cipherScriptUrl)))) {
-                int statusCode = response.getCode();
-
-                if (!HttpClientTools.isSuccessWithContent(statusCode)) {
-                    throw new IOException("Received non-success response code " + statusCode + " from script url " +
-                        cipherScriptUrl + " ( " + CipherUtils.parseTokenScriptUrl(cipherScriptUrl) + " )");
-                }
-
-                return dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8);
+            cached = cipherCache.get(cipherScriptUrl);
+            if (cached != null) {
+                return cached.rawScript;
             }
+
+            log.debug("getting raw player script {}", cipherScriptUrl);
+            return fetchRawScript(httpInterface, cipherScriptUrl);
         }
     }
 
@@ -266,19 +273,28 @@ public class LocalSignatureCipherManager implements CipherManager {
     }
 
     public String getTimestamp(HttpInterface httpInterface, String sourceUrl) throws IOException {
+        SignatureCipher cached = cipherCache.get(sourceUrl);
+        if (cached != null) {
+            return cached.timestamp;
+        }
+
         synchronized (this) {
+            cached = cipherCache.get(sourceUrl);
+            if (cached != null) {
+                return cached.timestamp;
+            }
+
             log.debug("Timestamp from script {}", sourceUrl);
 
-            try (ClassicHttpResponse response = httpInterface.execute(new HttpGet(CipherUtils.parseTokenScriptUrl(sourceUrl)))) {
-                int statusCode = response.getCode();
+            String script = fetchRawScript(httpInterface, sourceUrl);
+            String timestamp = getScriptTimestamp(httpInterface, script, sourceUrl);
 
-                if (!HttpClientTools.isSuccessWithContent(statusCode)) {
-                    throw new IOException("Received non-success response code " + statusCode + " from script url " +
-                        sourceUrl + " ( " + CipherUtils.parseTokenScriptUrl(sourceUrl) + " )");
-                }
-
-                return getScriptTimestamp(httpInterface, dev.lavalink.youtube.http.HttpUtils.entityToString(response.getEntity(), StandardCharsets.UTF_8), sourceUrl);
+            SignatureCipher extracted = tryExtractCipherQuietly(script, timestamp);
+            if (extracted != null) {
+                cacheCipher(sourceUrl, extracted);
             }
+
+            return timestamp;
         }
     }
 
@@ -289,6 +305,31 @@ public class LocalSignatureCipherManager implements CipherManager {
         }
 
         return scriptTimestamp.group(2);
+    }
+
+    @Nullable
+    private SignatureCipher tryExtractCipherQuietly(@NotNull String script, @NotNull String timestamp) {
+        Matcher globalVarsMatcher = GLOBAL_VARS_PATTERN.matcher(script);
+        if (!globalVarsMatcher.find()) {
+            return null;
+        }
+
+        Matcher sigActionsMatcher = ACTIONS_PATTERN.matcher(script);
+        if (!sigActionsMatcher.find()) {
+            return null;
+        }
+
+        Matcher sigFunctionMatcher = SIG_FUNCTION_PATTERN.matcher(script);
+        if (!sigFunctionMatcher.find()) {
+            return null;
+        }
+
+        Matcher nFunctionMatcher = N_FUNCTION_PATTERN.matcher(script);
+        if (!nFunctionMatcher.find()) {
+            return null;
+        }
+
+        return buildSignatureCipher(timestamp, script, globalVarsMatcher, sigActionsMatcher, sigFunctionMatcher, nFunctionMatcher);
     }
 
     private SignatureCipher extractFromScript(@NotNull String script, @NotNull String sourceUrl) {
@@ -318,6 +359,15 @@ public class LocalSignatureCipherManager implements CipherManager {
             scriptExtractionFailed(script, sourceUrl, ExtractionFailureType.N_FUNCTION_NOT_FOUND);
         }
 
+        return buildSignatureCipher(timestamp, script, globalVarsMatcher, sigActionsMatcher, sigFunctionMatcher, nFunctionMatcher);
+    }
+
+    private SignatureCipher buildSignatureCipher(@NotNull String timestamp,
+                                                 @NotNull String script,
+                                                 @NotNull Matcher globalVarsMatcher,
+                                                 @NotNull Matcher sigActionsMatcher,
+                                                 @NotNull Matcher sigFunctionMatcher,
+                                                 @NotNull Matcher nFunctionMatcher) {
         String globalVars = globalVarsMatcher.group("code");
         String sigActions = sigActionsMatcher.group(0);
         String sigFunction = sigFunctionMatcher.group(0);

@@ -4,6 +4,7 @@ import com.sedmelluq.discord.lavaplayer.tools.JsonBrowser;
 import com.sedmelluq.discord.lavaplayer.tools.io.HttpInterface;
 import dev.lavalink.youtube.clients.skeleton.StreamingNonMusicClient;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class Ios extends StreamingNonMusicClient {
     public static String CLIENT_VERSION = "21.32.4";
@@ -33,7 +34,7 @@ public class Ios extends StreamingNonMusicClient {
     @Override
     @NotNull
     protected JsonBrowser extractPlaylistVideoList(@NotNull JsonBrowser json) {
-        return json.get("contents")
+        JsonBrowser contents = json.get("contents")
             .get("singleColumnBrowseResultsRenderer")
             .get("tabs")
             .index(0)
@@ -43,18 +44,28 @@ public class Ios extends StreamingNonMusicClient {
             .get("contents")
             .index(0)
             .get("itemSectionRenderer")
-            .get("contents")
-            .index(0)
-            .get("playlistVideoListRenderer");
+            .get("contents");
+
+        JsonBrowser playlistVideoList = contents.index(0).get("playlistVideoListRenderer");
+        if (!playlistVideoList.isNull()) {
+            return playlistVideoList;
+        }
+
+        if (!contents.isNull()) {
+            return contents;
+        }
+
+        return super.extractPlaylistVideoList(json);
     }
 
     @Override
-    @NotNull
+    @Nullable
     protected String extractPlaylistName(@NotNull JsonBrowser json) {
-        return json.get("header")
+        String title = json.get("header")
                 .get("pageHeaderRenderer")
                 .get("pageTitle")
                 .text();
+        return title != null ? title : super.extractPlaylistName(json);
     }
 
     @Override

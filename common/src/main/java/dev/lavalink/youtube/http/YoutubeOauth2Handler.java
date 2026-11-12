@@ -32,12 +32,15 @@ public class YoutubeOauth2Handler {
     private static final String CLIENT_ID = "861556708454-d6dlm3lh05idd8npek18k6be8ba3oc68.apps.googleusercontent.com";
     private static final String CLIENT_SECRET = "SboVhoG9s0rNafixCSGGKXAT";
     private static final String SCOPES = "http://gdata.youtube.com https://www.googleapis.com/auth/youtube";
-    private static final String OAUTH_FETCH_CONTEXT_ATTRIBUTE = "yt-oauth";
+    static final String OAUTH_FETCH_CONTEXT_ATTRIBUTE = "yt-oauth";
     public static final String OAUTH_INJECT_CONTEXT_ATTRIBUTE = "yt-oauth-token";
+    private static final long DEFAULT_POLL_INTERVAL_MS = 5000L;
+    private static final long SLOW_DOWN_INCREMENT_MS = 5000L;
 
     private final HttpInterfaceManager httpInterfaceManager;
 
     private volatile boolean enabled;
+    private volatile Thread pollThread;
     private volatile String refreshToken;
 
     private volatile String tokenType;
@@ -49,6 +52,8 @@ public class YoutubeOauth2Handler {
     }
 
     public void setRefreshToken(@Nullable String refreshToken, boolean skipInitialization) {
+        cancelPollThread();
+
         this.refreshToken = refreshToken;
         this.tokenExpires = System.currentTimeMillis();
         this.accessToken = null;
@@ -62,8 +67,22 @@ public class YoutubeOauth2Handler {
             return;
         }
 
+        enabled = false;
+
         if (!skipInitialization) {
             initializeAccessToken();
+        }
+    }
+
+    private synchronized void cancelPollThread() {
+        Thread existing = this.pollThread;
+        this.pollThread = null;
+        if (existing != null && existing.isAlive()) {
+            try {
+                existing.interrupt();
+            } catch (Throwable t) {
+                log.debug("Failed to interrupt poll thread", t);
+            }
         }
     }
 
@@ -81,7 +100,7 @@ public class YoutubeOauth2Handler {
     }
 
     public boolean isOauthFetchContext(HttpClientContext context) {
-        return context.removeAttribute(OAUTH_FETCH_CONTEXT_ATTRIBUTE) == Boolean.TRUE;
+        return Boolean.TRUE.equals(context.getAttribute(OAUTH_FETCH_CONTEXT_ATTRIBUTE, Boolean.class));
     }
 
     /**
@@ -90,7 +109,9 @@ public class YoutubeOauth2Handler {
      * This will begin the oauth flow. If a refresh token is present, {@link #refreshAccessToken(boolean)} should
      * be used instead.
      */
-    private void initializeAccessToken() {
+    private synchronized void initializeAccessToken() {
+        cancelPollThread();
+
         JsonBrowser response = fetchDeviceCode();
 
         log.debug("fetch device code response: {}", response.format());
@@ -106,9 +127,10 @@ public class YoutubeOauth2Handler {
         log.info("!!! DO NOT AUTHORISE WITH YOUR MAIN ACCOUNT, USE A BURNER !!!");
         log.info("==================================================");
 
-        Thread pollThread = new Thread(() -> pollForToken(deviceCode, interval == 0 ? 5000 : interval), "youtube-source-token-poller");
-        pollThread.setDaemon(true);
-        pollThread.start();
+        Thread thread = new Thread(() -> pollForToken(deviceCode, interval <= 0 ? DEFAULT_POLL_INTERVAL_MS : interval), "youtube-source-token-poller");
+        thread.setDaemon(true);
+        this.pollThread = thread;
+        thread.start();
     }
 
     /**
@@ -132,10 +154,13 @@ public class YoutubeOauth2Handler {
         StringEntity body = new StringEntity(requestJson, ContentType.APPLICATION_JSON);
         request.setEntity(body);
 
-        try (HttpInterface httpInterface = getHttpInterface();
-             ClassicHttpResponse response = httpInterface.execute(request)) {
-            HttpClientTools.assertSuccessWithContent(response, "device code fetch");
-            return JsonBrowser.parse(response.getEntity().getContent());
+        try (HttpInterface httpInterface = getHttpInterface()) {
+            try (ClassicHttpResponse response = httpInterface.execute(request)) {
+                HttpClientTools.assertSuccessWithContent(response, "device code fetch");
+                return JsonBrowser.parse(response.getEntity().getContent());
+            } finally {
+                httpInterface.getContext().removeAttribute(OAUTH_FETCH_CONTEXT_ATTRIBUTE);
+            }
         } catch (IOException e) {
             throw ExceptionTools.toRuntimeException(e);
         }
@@ -148,7 +173,11 @@ public class YoutubeOauth2Handler {
      */
     public JsonBrowser fetchRefreshToken(String deviceCode) throws IOException {
         try (HttpInterface httpInterface = getHttpInterface()) {
-            return fetchRefreshToken(httpInterface, deviceCode);
+            try {
+                return fetchRefreshToken(httpInterface, deviceCode);
+            } finally {
+                httpInterface.getContext().removeAttribute(OAUTH_FETCH_CONTEXT_ATTRIBUTE);
+            }
         }
     }
 
@@ -171,7 +200,11 @@ public class YoutubeOauth2Handler {
         try (ClassicHttpResponse response = httpInterface.execute(request)) {
             HttpClientTools.assertSuccessWithContent(response, "oauth2 token fetch");
             JsonBrowser parsed = JsonBrowser.parse(response.getEntity().getContent());
-            log.debug("oauth2 token fetch response: {}", parsed.format());
+            if (!parsed.get("error").isNull()) {
+                log.debug("oauth2 token fetch error response: {}", parsed.get("error").text());
+            } else {
+                log.debug("oauth2 token fetch succeeded (tokens redacted)");
+            }
             return parsed;
         } catch (IOException e) {
             throw ExceptionTools.toRuntimeException(e);
@@ -179,40 +212,60 @@ public class YoutubeOauth2Handler {
     }
 
     private void pollForToken(String deviceCode, long interval) {
+        long currentInterval = interval <= 0 ? DEFAULT_POLL_INTERVAL_MS : interval;
+
         try (HttpInterface httpInterface = getHttpInterface()) {
-            while (true) {
-                try {
-                    JsonBrowser response = fetchRefreshToken(httpInterface, deviceCode);
+            try {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        JsonBrowser response = fetchRefreshToken(httpInterface, deviceCode);
 
-                    if (!response.get("error").isNull()) {
-                        String error = response.get("error").text();
+                        if (!response.get("error").isNull()) {
+                            String error = response.get("error").text();
 
-                        switch (error) {
-                            case "authorization_pending":
-                            case "slow_down":
-                                Thread.sleep(interval);
-                                continue;
-                            case "expired_token":
-                                log.error("OAUTH INTEGRATION: The device token has expired. OAuth integration has been canceled.");
-                                break;
-                            case "access_denied":
-                                log.error("OAUTH INTEGRATION: Account linking was denied. OAuth integration has been canceled.");
-                                break;
-                            default:
-                                log.error("Unhandled OAuth2 error: {}", error);
-                                break;
+                            switch (error) {
+                                case "slow_down":
+                                    currentInterval += SLOW_DOWN_INCREMENT_MS;
+                                    Thread.sleep(currentInterval);
+                                    continue;
+                                case "authorization_pending":
+                                    Thread.sleep(currentInterval);
+                                    continue;
+                                case "expired_token":
+                                    log.error("OAUTH INTEGRATION: The device token has expired. OAuth integration has been canceled.");
+                                    break;
+                                case "access_denied":
+                                    log.error("OAUTH INTEGRATION: Account linking was denied. OAuth integration has been canceled.");
+                                    break;
+                                default:
+                                    log.error("Unhandled OAuth2 error: {}", error);
+                                    break;
+                            }
+
+                            return;
                         }
 
+                        updateTokens(response);
+                        log.info("OAUTH INTEGRATION: Token retrieved successfully. Retrieve your refresh token via getOauth2RefreshToken() to reuse it. ([redacted])");
+                        enabled = true;
                         return;
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        log.debug("OAuth2 token polling interrupted, exiting.");
+                        return;
+                    } catch (RuntimeException e) {
+                        log.error("Failed to fetch OAuth2 token response", e);
+                        try {
+                            Thread.sleep(currentInterval);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            log.debug("OAuth2 token polling interrupted during retry backoff, exiting.");
+                            return;
+                        }
                     }
-
-                    updateTokens(response);
-                    log.info("OAUTH INTEGRATION: Token retrieved successfully. Store your refresh token as this can be reused. ({})", refreshToken);
-                    enabled = true;
-                    return;
-                } catch (InterruptedException | RuntimeException e) {
-                    log.error("Failed to fetch OAuth2 token response", e);
                 }
+            } finally {
+                httpInterface.getContext().removeAttribute(OAUTH_FETCH_CONTEXT_ATTRIBUTE);
             }
         } catch (IOException e) {
             log.error("Failed to acquire HTTP interface for token polling", e);
@@ -250,7 +303,7 @@ public class YoutubeOauth2Handler {
             JsonBrowser json = createNewAccessToken(refreshToken);
             updateTokens(json);
             log.info("YouTube access token refreshed successfully");
-            log.debug("YouTube access token is {} and refresh token is {}. Access token expires in {} seconds.", accessToken, refreshToken, json.get("expires_in").asLong(300));
+            log.debug("YouTube access token is [redacted] and refresh token is [redacted]. Access token expires in {} seconds.", json.get("expires_in").asLong(300));
         }
     }
 
@@ -277,16 +330,19 @@ public class YoutubeOauth2Handler {
         StringEntity entity = new StringEntity(requestJson, ContentType.APPLICATION_JSON);
         request.setEntity(entity);
 
-        try (HttpInterface httpInterface = getHttpInterface();
-             ClassicHttpResponse response = httpInterface.execute(request)) {
-            HttpClientTools.assertSuccessWithContent(response, "oauth2 token fetch");
-            JsonBrowser parsed = JsonBrowser.parse(response.getEntity().getContent());
+        try (HttpInterface httpInterface = getHttpInterface()) {
+            try (ClassicHttpResponse response = httpInterface.execute(request)) {
+                HttpClientTools.assertSuccessWithContent(response, "oauth2 token fetch");
+                JsonBrowser parsed = JsonBrowser.parse(response.getEntity().getContent());
 
-            if (!parsed.get("error").isNull()) {
-                throw new RuntimeException("Refreshing access token returned error " + parsed.get("error").text());
+                if (!parsed.get("error").isNull()) {
+                    throw new RuntimeException("Refreshing access token returned error " + parsed.get("error").text());
+                }
+
+                return parsed;
+            } finally {
+                httpInterface.getContext().removeAttribute(OAUTH_FETCH_CONTEXT_ATTRIBUTE);
             }
-
-            return parsed;
         } catch (IOException e) {
             throw ExceptionTools.toRuntimeException(e);
         }
@@ -301,7 +357,7 @@ public class YoutubeOauth2Handler {
         refreshToken = newRefreshToken.isNull() ? refreshToken : newRefreshToken.text();
         tokenExpires = System.currentTimeMillis() + (tokenLifespan * 1000) - 60000;
 
-        log.debug("OAuth access token is {} and refresh token is {}. Access token expires in {} seconds.", accessToken, refreshToken, tokenLifespan);
+        log.debug("OAuth access token is [redacted] and refresh token is [redacted]. Access token expires in {} seconds.", tokenLifespan);
     }
 
     public void applyToken(ClassicHttpRequest request) {
@@ -334,7 +390,7 @@ public class YoutubeOauth2Handler {
 
         // check again to ensure updating worked as expected.
         if (accessToken != null && tokenType != null && System.currentTimeMillis() < tokenExpires) {
-            log.debug("Using oauth authorization header with value \"{} {}\"", tokenType, accessToken);
+            log.debug("Using oauth authorization header with scheme \"{}\" ([redacted])", tokenType);
             request.setHeader("Authorization", String.format("%s %s", tokenType, accessToken));
         }
     }

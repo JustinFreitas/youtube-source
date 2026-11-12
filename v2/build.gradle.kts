@@ -16,9 +16,6 @@ dependencies {
     compileOnly(libs.lavaplayer.v2)
     compileOnly(libs.httpclient5)
     compileOnly(libs.httpcore5)
-
-    implementation(libs.rhino.engine)
-    implementation(libs.nanojson)
     compileOnly(libs.slf4j)
     compileOnly(libs.annotations)
 

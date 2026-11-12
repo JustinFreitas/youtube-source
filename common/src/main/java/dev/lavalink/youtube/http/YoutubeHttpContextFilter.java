@@ -62,8 +62,26 @@ public class YoutubeHttpContextFilter extends BaseYoutubeHttpContextFilter {
       context.setCookieStore(cookieStore);
     }
 
-    // Reset cookies for each sequence of requests.
+    // Reset cookies and transient per-request attributes for each sequence of requests.
     cookieStore.clear();
+    clearContextAttributes(context);
+  }
+
+  @Override
+  public void onContextClose(HttpClientContext context) {
+    clearContextAttributes(context);
+    super.onContextClose(context);
+  }
+
+  private void clearContextAttributes(HttpClientContext context) {
+    context.removeAttribute(ATTRIBUTE_RESET_RETRY);
+    context.removeAttribute(ATTRIBUTE_USER_AGENT_SPECIFIED);
+    context.removeAttribute(ATTRIBUTE_VISITOR_DATA_SPECIFIED);
+    context.removeAttribute(ATTRIBUTE_CIPHER_REQUEST_SPECIFIED);
+    context.removeAttribute(Client.OAUTH_CLIENT_ATTRIBUTE);
+    context.removeAttribute(OAUTH_INJECT_CONTEXT_ATTRIBUTE);
+    context.removeAttribute(YoutubeAccessTokenTracker.TOKEN_FETCH_CONTEXT_ATTRIBUTE);
+    context.removeAttribute(YoutubeOauth2Handler.OAUTH_FETCH_CONTEXT_ATTRIBUTE);
   }
 
   @Override
@@ -76,16 +94,14 @@ public class YoutubeHttpContextFilter extends BaseYoutubeHttpContextFilter {
 
     retryCounter.handleUpdate(context, isRepetition);
 
-    if (tokenTracker.isTokenFetchContext(context)) {
+    if (tokenTracker != null && tokenTracker.isTokenFetchContext(context)) {
       // Used for fetching visitor id, let's not recurse.
       return;
     }
 
-    if (oauth2Handler.isOauthFetchContext(context)) {
+    if (oauth2Handler != null && oauth2Handler.isOauthFetchContext(context)) {
       return;
     }
-
-    String userAgent = context.getAttribute(ATTRIBUTE_USER_AGENT_SPECIFIED, String.class);
 
     // HttpClient 5's ClassicHttpRequest#getUri() throws URISyntaxException (unlike HC4's getURI()).
     URI requestUri;
@@ -97,30 +113,41 @@ public class YoutubeHttpContextFilter extends BaseYoutubeHttpContextFilter {
 
     if (isRemoteCipherRequest(context)) {
       if (!DataFormatTools.isNullOrEmpty(remoteCipherPass)) {
-        request.addHeader("Authorization", remoteCipherPass);
+        request.setHeader("Authorization", remoteCipherPass);
       }
 
       if (!DataFormatTools.isNullOrEmpty(remoteCipherUserAgent)) {
-        request.addHeader("User-Agent", remoteCipherUserAgent);
+        request.setHeader("User-Agent", remoteCipherUserAgent);
       }
 
-      request.addHeader("Plugin-Version", pluginVersion);
-    } else if (!requestUri.getHost().contains("googlevideo")) {
+      if (pluginVersion != null) {
+        request.setHeader("Plugin-Version", pluginVersion);
+      }
+      return;
+    }
+
+    super.onRequest(context, request, isRepetition);
+
+    String userAgent = context.getAttribute(ATTRIBUTE_USER_AGENT_SPECIFIED, String.class);
+    String host = requestUri.getHost();
+
+    if (host == null || !host.contains("googlevideo")) {
       if (userAgent != null) {
         request.setHeader("User-Agent", userAgent);
 
         String visitorData = context.getAttribute(ATTRIBUTE_VISITOR_DATA_SPECIFIED, String.class);
-        request.setHeader("X-Goog-Visitor-Id", visitorData != null ? visitorData : tokenTracker.getVisitorId());
+        String resolvedVisitorId = visitorData != null ? visitorData : (tokenTracker != null ? tokenTracker.getVisitorId() : null);
+        if (resolvedVisitorId != null) {
+          request.setHeader("X-Goog-Visitor-Id", resolvedVisitorId);
+        }
 
         context.removeAttribute(ATTRIBUTE_VISITOR_DATA_SPECIFIED);
         context.removeAttribute(ATTRIBUTE_USER_AGENT_SPECIFIED);
       }
 
-      // fix: getAttribute is needed over removeAttribute as this renders subsequent requests where oauth is
-      //      required useless, because the attribute has already been removed.
       boolean isRequestFromOauthedClient = Boolean.TRUE.equals(context.getAttribute(Client.OAUTH_CLIENT_ATTRIBUTE, Boolean.class));
 
-      if (isRequestFromOauthedClient && Client.PLAYER_URL.equals(requestUri.toString())) {
+      if (isRequestFromOauthedClient && oauth2Handler != null && Client.PLAYER_URL.equals(requestUri.toString())) {
         // Look at the userdata for any provided oauth-token
         String oauthToken = context.getAttribute(OAUTH_INJECT_CONTEXT_ATTRIBUTE, String.class);
         // only apply the token to /player requests.
@@ -129,12 +156,6 @@ public class YoutubeHttpContextFilter extends BaseYoutubeHttpContextFilter {
         } else {
           oauth2Handler.applyToken(request);
         }
-
-        // complements above fix, ensure we consume this attribute when we use it to ensure it doesn't leak
-        // over into requests from non-oauth clients. This might be a dirty fix because this is assuming the
-        // context this attribute is attached, always hits the player endpoint once. May need to revise this
-        // in the future.
-        context.removeAttribute(Client.OAUTH_CLIENT_ATTRIBUTE);
       }
     }
 
@@ -180,6 +201,6 @@ public class YoutubeHttpContextFilter extends BaseYoutubeHttpContextFilter {
   }
 
   private boolean isRemoteCipherRequest(HttpClientContext context) {
-    return context.removeAttribute(ATTRIBUTE_CIPHER_REQUEST_SPECIFIED) == Boolean.TRUE;
+    return Boolean.TRUE.equals(context.getAttribute(ATTRIBUTE_CIPHER_REQUEST_SPECIFIED, Boolean.class));
   }
 }

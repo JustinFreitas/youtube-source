@@ -73,13 +73,14 @@ public class TvHtml5Simply extends StreamingNonMusicClient {
 
     @Override
     protected String extractPlaylistName(@NotNull JsonBrowser json) {
-        return json.get("header")
+        String title = json.get("header")
                 .get("playlistHeaderRenderer")
                 .get("title")
                 .get("runs")
                 .index(0)
                 .get("text")
                 .text();
+        return title != null ? title : super.extractPlaylistName(json);
     }
 
     @Override

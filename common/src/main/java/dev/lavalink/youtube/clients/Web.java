@@ -38,7 +38,7 @@ public class Web extends StreamingNonMusicClient {
             .withClientField("clientVersion", "2.20250403.01.00")
             .withUserField("lockedSafetyMode", false);
 
-    public static String poToken;
+    public static volatile String poToken;
 
     protected volatile long lastConfigUpdate = -1;
 
@@ -55,15 +55,22 @@ public class Web extends StreamingNonMusicClient {
     public static void setPoTokenAndVisitorData(String poToken, String visitorData) {
         Web.poToken = poToken;
 
-        if (poToken == null || visitorData == null) {
-            BASE_CONFIG.getRoot().remove("serviceIntegrityDimensions");
-            BASE_CONFIG.withVisitorData(null);
-            return;
-        }
+        synchronized (BASE_CONFIG) {
+            if (poToken == null || visitorData == null) {
+                BASE_CONFIG.getRoot().remove("serviceIntegrityDimensions");
+                BASE_CONFIG.withVisitorData(null);
+                return;
+            }
 
-        Map<String, Object> sid = BASE_CONFIG.putOnceAndJoin(BASE_CONFIG.getRoot(), "serviceIntegrityDimensions");
-        sid.put("poToken", poToken);
-        BASE_CONFIG.withVisitorData(visitorData);
+            Map<String, Object> sid = BASE_CONFIG.putOnceAndJoin(BASE_CONFIG.getRoot(), "serviceIntegrityDimensions");
+            sid.put("poToken", poToken);
+            BASE_CONFIG.withVisitorData(visitorData);
+        }
+    }
+
+    @Nullable
+    protected String getPoToken() {
+        return Web.poToken;
     }
 
     protected void fetchClientConfig(@NotNull HttpInterface httpInterface) {
@@ -140,13 +147,14 @@ public class Web extends StreamingNonMusicClient {
     @Override
     @NotNull
     public URI transformPlaybackUri(@NotNull URI originalUri, @NotNull URI resolvedPlaybackUri) {
-        if (poToken == null) {
+        String token = getPoToken();
+        if (token == null) {
             return resolvedPlaybackUri;
         }
 
         log.debug("Applying 'pot' parameter on playback URI: {}", resolvedPlaybackUri);
         URIBuilder builder = new URIBuilder(resolvedPlaybackUri);
-        builder.addParameter("pot", poToken);
+        builder.addParameter("pot", token);
 
         try {
             return builder.build();

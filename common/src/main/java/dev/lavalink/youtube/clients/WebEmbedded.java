@@ -22,6 +22,8 @@ public class WebEmbedded extends Web {
         .withClientField("clientVersion", "1.20250401.01.00")
         .withUserField("lockedSafetyMode", false);
 
+    public static volatile String poToken;
+
     public WebEmbedded() {
         super(ClientOptions.DEFAULT);
     }
@@ -29,15 +31,23 @@ public class WebEmbedded extends Web {
     public static void setPoTokenAndVisitorData(String poToken, String visitorData) {
         WebEmbedded.poToken = poToken;
 
-        if (poToken == null || visitorData == null) {
-            BASE_CONFIG.getRoot().remove("serviceIntegrityDimensions");
-            BASE_CONFIG.withVisitorData(null);
-            return;
-        }
+        synchronized (BASE_CONFIG) {
+            if (poToken == null || visitorData == null) {
+                BASE_CONFIG.getRoot().remove("serviceIntegrityDimensions");
+                BASE_CONFIG.withVisitorData(null);
+                return;
+            }
 
-        Map<String, Object> sid = BASE_CONFIG.putOnceAndJoin(BASE_CONFIG.getRoot(), "serviceIntegrityDimensions");
-        sid.put("poToken", poToken);
-        BASE_CONFIG.withVisitorData(visitorData);
+            Map<String, Object> sid = BASE_CONFIG.putOnceAndJoin(BASE_CONFIG.getRoot(), "serviceIntegrityDimensions");
+            sid.put("poToken", poToken);
+            BASE_CONFIG.withVisitorData(visitorData);
+        }
+    }
+
+    @Override
+    @Nullable
+    protected String getPoToken() {
+        return WebEmbedded.poToken;
     }
 
     @Override
@@ -48,13 +58,14 @@ public class WebEmbedded extends Web {
     @Override
     @NotNull
     public URI transformPlaybackUri(@NotNull URI originalUri, @NotNull URI resolvedPlaybackUri) {
-        if (poToken == null) {
+        String token = getPoToken();
+        if (token == null) {
             return resolvedPlaybackUri;
         }
 
         log.debug("Applying 'pot' parameter on playback URI: {}", resolvedPlaybackUri);
         URIBuilder builder = new URIBuilder(resolvedPlaybackUri);
-        builder.addParameter("pot", poToken);
+        builder.addParameter("pot", token);
 
         try {
             return builder.build();

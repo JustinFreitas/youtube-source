@@ -9,6 +9,7 @@ import spock.lang.Specification
 import java.nio.charset.StandardCharsets
 
 import static dev.lavalink.youtube.cipher.CipherScriptFixtures.TIMESTAMP_LINE
+import static dev.lavalink.youtube.cipher.CipherScriptFixtures.fullScript
 
 class LocalSignatureCipherManagerCacheSpec extends Specification {
 
@@ -67,5 +68,70 @@ class LocalSignatureCipherManagerCacheSpec extends Specification {
         ]
         result.url == "/s/player/abc123/player_ias.vflset/en_US/base.js"
         !result.is(expiredScript)
+    }
+
+    def "getCachedPlayerScript followed by resolveFormatUrl downloads base.js only once"() {
+        given:
+        def httpInterface = Mock(HttpInterface)
+        def scriptUrl = "/s/player/abc123/player_ias.vflset/en_US/base.js"
+        def embedBody = "{\"jsUrl\":\"${scriptUrl}\"}"
+        def format = new dev.lavalink.youtube.track.format.StreamFormat(
+            org.apache.hc.core5.http.ContentType.parse("audio/webm; codecs=opus"),
+            251, 128000L, 1000L, 2L,
+            "https://rr1---sn-test.googlevideo.com/videoplayback",
+            null, "aaabbbccc", "sig", true, false
+        )
+
+        when:
+        def playerScript = manager.getCachedPlayerScript(httpInterface)
+        def resolvedUri = manager.resolveFormatUrl(httpInterface, playerScript.url, format)
+
+        then: "embed page is fetched once and base.js is fetched once (reused from cipherCache)"
+        2 * httpInterface.execute(_ as HttpUriRequestBase) >>> [
+            responseWithBody(embedBody),
+            responseWithBody(fullScript())
+        ]
+        playerScript.signatureTimestamp == "12345"
+        resolvedUri.toString().contains("sig=bbbccc")
+    }
+
+    def "resolveFormatUrl error path uses local cipher.rawScript without NPE if cipherCache is cleared"() {
+        given:
+        def httpInterface = Mock(HttpInterface)
+        def scriptUrl = "https://www.youtube.com/s/player/cacheclear/base.js"
+        def faultyCipher = new SignatureCipher(
+            "12345",
+            "var x = 1;",
+            "var y = {};",
+            "function(a) { throw new Error('boom'); }",
+            "function(a) { throw new Error('nboom'); }",
+            "/* raw script content */"
+        )
+        manager.cipherCache.put(scriptUrl, faultyCipher)
+        def format = new dev.lavalink.youtube.track.format.StreamFormat(
+            org.apache.hc.core5.http.ContentType.parse("audio/webm; codecs=opus"),
+            251, 128000L, 1000L, 2L,
+            "https://rr1---sn-test.googlevideo.com/videoplayback",
+            "n_input", "sig_input", "sig", true, false
+        )
+
+        when: "cipherCache is cleared before/during script error handling via a custom engine or post-lookup clear"
+        def cachingManager = new LocalSignatureCipherManager()
+        cachingManager.cipherCache.put(scriptUrl, new SignatureCipher(
+            "12345",
+            "var x = 1;",
+            "var y = {};",
+            "function(a) { throw new Error('sig_boom'); }",
+            "function(a) { throw new Error('n_boom'); }",
+            "/* raw script content */"
+        ))
+        // Pre-populate dumpedScriptUrls so dumpProblematicScript doesn't write temp files on disk,
+        // while still evaluating cipher.rawScript as its non-null argument!
+        cachingManager.dumpedScriptUrls.add(scriptUrl)
+        def uri = cachingManager.resolveFormatUrl(httpInterface, scriptUrl, format)
+
+        then:
+        noExceptionThrown()
+        uri != null
     }
 }

@@ -7,13 +7,16 @@ import org.slf4j.LoggerFactory;
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Describes one signature cipher
  */
 public class SignatureCipher {
     private static final Logger log = LoggerFactory.getLogger(SignatureCipher.class);
+    private static final AtomicLong CIPHER_ID_GENERATOR = new AtomicLong();
 
+    public final long id = CIPHER_ID_GENERATOR.incrementAndGet();
     public final String timestamp;
     public final String globalVars;
     public final String sigActions;
@@ -42,9 +45,9 @@ public class SignatureCipher {
     public String apply(@NotNull String text,
                         @NotNull ScriptEngine scriptEngine) throws ScriptException, NoSuchMethodException {
         Object loadedCipher = scriptEngine.get("loaded_cipher_id");
-        if (!java.util.Objects.equals(loadedCipher, this.hashCode())) {
+        if (!java.util.Objects.equals(loadedCipher, this.id)) {
             scriptEngine.eval(globalVars + ";" + sigActions + ";decrypt_sig=" + sigFunction);
-            scriptEngine.put("loaded_cipher_id", this.hashCode());
+            scriptEngine.put("loaded_cipher_id", this.id);
         }
         return (String) ((Invocable) scriptEngine).invokeFunction("decrypt_sig", text);
     }
@@ -87,9 +90,9 @@ public class SignatureCipher {
     public String transform(@NotNull String text, @NotNull ScriptEngine scriptEngine)
         throws ScriptException, NoSuchMethodException {
         Object loadedNsig = scriptEngine.get("loaded_nsig_id");
-        if (!java.util.Objects.equals(loadedNsig, this.hashCode())) {
+        if (!java.util.Objects.equals(loadedNsig, this.id)) {
             scriptEngine.eval(globalVars + ";decrypt_nsig=" + nFunction);
-            scriptEngine.put("loaded_nsig_id", this.hashCode());
+            scriptEngine.put("loaded_nsig_id", this.id);
         }
         return (String) ((Invocable) scriptEngine).invokeFunction("decrypt_nsig", text);
     }

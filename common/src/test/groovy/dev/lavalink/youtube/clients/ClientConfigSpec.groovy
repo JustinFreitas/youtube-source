@@ -94,31 +94,40 @@ class ClientConfigSpec extends Specification {
         second.marker == "value"
     }
 
-    def "copy duplicates the top-level root map instance but shares nested maps"() {
+    def "copy deep-copies nested maps and preserves scalar properties including apiKey"() {
         given:
         def original = new ClientConfig()
-        original.withClientName("ANDROID")
-        original.withVisitorData("visitor-123")
+            .withClientName("ANDROID")
+            .withUserAgent("TestAgent/1.0")
+            .withVisitorData("visitor-123")
+            .withApiKey("AIzaTestKey123")
+            .withRootField("tags", ["a", "b"])
 
         when:
         def copy = original.copy()
 
-        then: "the top-level root map is a distinct instance"
+        then: "the top-level root map and scalar properties are copied"
         !copy.getRoot().is(original.getRoot())
         copy.getName() == original.getName()
+        copy.getUserAgent() == original.getUserAgent()
         copy.getVisitorData() == original.getVisitorData()
+        copy.getApiKey() == "AIzaTestKey123"
 
-        when: "a new top-level key is added to the copy"
+        when: "context.thirdParty is added via withThirdPartyEmbedUrl on the copy"
         copy.withThirdPartyEmbedUrl("https://example.com/embed")
 
-        then: "the original is unaffected, since 'context' vs 'thirdParty' are distinct top-level keys"
-        !original.getRoot().containsKey("thirdParty")
+        then: "context.thirdParty exists only on the copy and does not pollute original.context"
+        copy.getRoot().context.thirdParty.embedUrl == "https://example.com/embed"
+        !original.getRoot().context.containsKey("thirdParty")
 
-        when: "an existing nested map (context.client) is mutated via the copy"
+        when: "an existing nested map (context.client) and list are mutated via the copy"
         copy.withClientField("extra", "onlyOnCopy")
+        (copy.getRoot().tags as List).add("c")
 
-        then: "this is only a shallow copy -- nested maps are shared, so the original is mutated too"
-        original.getRoot().context.client.extra == "onlyOnCopy"
+        then: "nested maps and lists are isolated from the original"
+        copy.getRoot().context.client.extra == "onlyOnCopy"
+        !original.getRoot().context.client.containsKey("extra")
+        original.getRoot().tags == ["a", "b"]
     }
 
     def "toJsonString renders the nested structure as JSON"() {
