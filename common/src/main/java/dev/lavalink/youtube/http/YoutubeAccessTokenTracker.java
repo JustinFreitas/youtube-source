@@ -39,7 +39,7 @@ public class YoutubeAccessTokenTracker {
   public String getVisitorId() {
     long now = System.currentTimeMillis();
 
-    if (visitorId == null || now - lastVisitorIdUpdate > VISITOR_ID_REFRESH_INTERVAL) {
+    if (visitorId == null || now - lastVisitorIdUpdate >= VISITOR_ID_REFRESH_INTERVAL) {
       synchronized (tokenLock) {
         long currentNow = System.currentTimeMillis();
         if (visitorId != null && currentNow - lastVisitorIdUpdate < VISITOR_ID_REFRESH_INTERVAL) {
