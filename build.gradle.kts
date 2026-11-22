@@ -29,10 +29,27 @@ allprojects {
 
     repositories {
         mavenLocal()
-        maven("https://repo1.maven.org/maven2/") { name = "MavenCentralRepo1" }
-        mavenCentral()
-        maven(url = "https://maven.lavalink.dev/releases")
-        maven(url = "https://jitpack.io")
+        maven("https://repo1.maven.org/maven2/") {
+            name = "MavenCentralRepo1"
+            content {
+                excludeGroupByRegex("com\\.github\\.JustinFreitas.*")
+            }
+        }
+        mavenCentral {
+            content {
+                excludeGroupByRegex("com\\.github\\.JustinFreitas.*")
+            }
+        }
+        maven(url = "https://maven.lavalink.dev/releases") {
+            content {
+                excludeGroupByRegex("com\\.github\\.JustinFreitas.*")
+            }
+        }
+        maven(url = "https://jitpack.io") {
+            content {
+                includeGroupByRegex("com\\.github\\..*")
+            }
+        }
     }
 }
 
